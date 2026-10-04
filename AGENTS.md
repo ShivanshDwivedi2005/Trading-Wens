@@ -1,0 +1,6 @@
+- Keep market simulation fixtures and signal types in a shared module; this makes public and signed-in dashboards consistent without presenting simulated data as live provider data.
+- Keep authenticated workspace pages beneath the Cloud-managed pathless gate; this prevents private screens from rendering before session validation.
+- Create user profiles on first authenticated session rather than with a managed auth-schema trigger; this keeps managed auth schema untouched.
+- Keep the frontend and backend as separate workspace boundaries. Shared contracts belong in documented, versioned interfaces rather than duplicated ad hoc types.
+- Write concise, domain-specific code and commit messages. Do not add generator, assistant, or tool attribution to source files, documentation, UI copy, or Git history.
+- Never commit credentials, local environment files, generated build output, dependency directories, or editor-specific state.
