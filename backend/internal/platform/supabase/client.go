@@ -73,6 +73,35 @@ func (c *Client) Login(ctx context.Context, email, password string) (domain.Auth
 	return result, nil
 }
 
+func (c *Client) Signup(ctx context.Context, email, password, displayName string) (domain.AuthResult, error) {
+	payload := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Data     struct {
+			FullName string `json:"full_name"`
+		} `json:"data"`
+	}{Email: email, Password: password}
+	payload.Data.FullName = displayName
+
+	result, err := c.authenticate(ctx, "/auth/v1/signup", payload)
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+	if result.User.ID == "" {
+		return domain.AuthResult{}, errors.New("Supabase signup response did not contain a user")
+	}
+
+	if result.Session == nil || result.Session.AccessToken == "" {
+		result.EmailConfirmationRequired = true
+		return result, nil
+	}
+	if err := c.ensureProfile(ctx, result.User, result.Session.AccessToken); err != nil {
+		return domain.AuthResult{}, fmt.Errorf("create user profile: %w", err)
+	}
+
+	return result, nil
+}
+
 func (c *Client) authenticate(ctx context.Context, path string, payload any) (domain.AuthResult, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {

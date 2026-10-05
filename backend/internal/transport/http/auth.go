@@ -17,6 +17,7 @@ const maxRequestSize = 64 << 10
 
 type AuthService interface {
 	Login(ctx context.Context, email, password string) (domain.AuthResult, error)
+	Signup(ctx context.Context, email, password, displayName string) (domain.AuthResult, error)
 }
 
 type AuthHandler struct {
@@ -61,6 +62,48 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
+		return
+	}
+
+	var request struct {
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		DisplayName string `json:"display_name"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+
+	request.Email = strings.ToLower(strings.TrimSpace(request.Email))
+	request.DisplayName = strings.TrimSpace(request.DisplayName)
+	if !validEmail(request.Email) {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_email", "Enter a valid email address")
+		return
+	}
+	if len(request.Password) < 8 {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_password", "Password must contain at least 8 characters")
+		return
+	}
+	if len(request.DisplayName) < 2 || len(request.DisplayName) > 100 {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_display_name", "Display name must contain between 2 and 100 characters")
+		return
+	}
+
+	result, err := h.service.Signup(r.Context(), request.Email, request.Password, request.DisplayName)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusCreated, result)
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {

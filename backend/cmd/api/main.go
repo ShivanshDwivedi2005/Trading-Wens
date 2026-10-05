@@ -27,6 +27,7 @@ func main() {
 
 	router := http.NewServeMux()
 	router.HandleFunc("/api/v1/auth/login", authHandler.Login)
+	router.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

@@ -15,6 +15,7 @@ type Session struct {
 }
 
 type AuthResult struct {
-	User    User     `json:"user"`
-	Session *Session `json:"session,omitempty"`
+	User                      User     `json:"user"`
+	Session                   *Session `json:"session,omitempty"`
+	EmailConfirmationRequired bool     `json:"email_confirmation_required,omitempty"`
 }
