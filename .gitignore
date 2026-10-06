@@ -21,6 +21,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
+env/
 
 # Test and coverage output
 coverage
@@ -41,3 +42,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Private planning and submission notes
+documentation/
