@@ -5,6 +5,22 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/news:
+    get:
+      summary: Get recent large-cap company news
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent normalized GDELT articles in descending publication order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsFeedResponse"
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "502":
+          description: Authentication or news provider unavailable
   /api/v1/market/snapshots:
     get:
       summary: Get the current large-cap market watchlist
@@ -28,6 +44,58 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    NewsFeedResponse:
+      type: object
+      required: [data, as_of, source, count]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NewsArticle"
+        as_of:
+          type: string
+          format: date-time
+        source:
+          type: string
+          const: gdelt
+        count:
+          type: integer
+          minimum: 0
+    NewsArticle:
+      type: object
+      required:
+        - id
+        - title
+        - url
+        - domain
+        - published_at
+        - language
+        - source_country
+        - matched_symbols
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        domain:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        language:
+          type: string
+        source_country:
+          type: string
+        image_url:
+          type: string
+          format: uri
+        matched_symbols:
+          type: array
+          items:
+            type: string
     MarketSnapshotResponse:
       type: object
       required: [data, as_of, feed, source, count]

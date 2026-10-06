@@ -17,6 +17,7 @@ type Config struct {
 	AlpacaAPIKeyID         string
 	AlpacaAPISecretKey     string
 	AlpacaDataFeed         string
+	GDELTAPIURL            string
 	CORSAllowedOrigins     []string
 }
 
@@ -41,6 +42,7 @@ func Load() (Config, error) {
 		AlpacaAPIKeyID:     strings.TrimSpace(os.Getenv("ALPACA_API_KEY_ID")),
 		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
+		GDELTAPIURL:        strings.TrimRight(valueOrDefault("GDELT_API_URL", "https://api.gdeltproject.org/api/v2/doc/doc"), "/"),
 		CORSAllowedOrigins: splitList(valueOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
 	}
 
@@ -66,6 +68,9 @@ func Load() (Config, error) {
 	}
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {
 		return Config{}, errors.New("ALPACA_DATA_REST_URL must be an HTTP or HTTPS URL")
+	}
+	if !strings.HasPrefix(cfg.GDELTAPIURL, "https://") && !strings.HasPrefix(cfg.GDELTAPIURL, "http://") {
+		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
 	}
 	if !validAlpacaFeed(cfg.AlpacaDataFeed) {
 		return Config{}, fmt.Errorf("unsupported ALPACA_DATA_FEED %q", cfg.AlpacaDataFeed)

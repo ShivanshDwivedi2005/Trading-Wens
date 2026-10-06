@@ -38,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SignalDetail } from "./SignalDetail";
 import { MarketOverview } from "./MarketOverview";
+import { NewsFeed } from "./NewsFeed";
 import {
   initialEvents,
   marketIndices,
@@ -219,6 +220,8 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
     view === "AI Risk Signals" ||
     view === "Alerts";
   const showingLiveMarket = !demo && view === "Market overview";
+  const showingLiveNews = !demo && view === "Live risk feed";
+  const showingProviderData = showingLiveMarket || showingLiveNews;
   return (
     <div className="workspace min-h-screen bg-background text-foreground">
       <aside className="workspace-sidebar hidden lg:block">
@@ -314,7 +317,9 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               <span className="size-1.5 rounded-full bg-accent" />{" "}
               {showingLiveMarket
                 ? "AUTHENTICATED WORKSPACE · ALPACA MARKET DATA"
-                : `${demo ? "PUBLIC DEMO" : "WORKSPACE"} · SIMULATED DATA`}
+                : showingLiveNews
+                  ? "AUTHENTICATED WORKSPACE · GDELT MARKET NEWS"
+                  : `${demo ? "PUBLIC DEMO" : "WORKSPACE"} · SIMULATED DATA`}
             </span>
             {demo && (
               <Link
@@ -330,7 +335,11 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
             <div>
               <div className="label flex items-center gap-2 text-primary">
                 <span className="size-1 rounded-full bg-primary" />{" "}
-                {showingLiveMarket ? "LIVE MARKET OVERVIEW" : "REAL-TIME INTELLIGENCE"}
+                {showingLiveMarket
+                  ? "LIVE MARKET OVERVIEW"
+                  : showingLiveNews
+                    ? "LIVE NEWS MONITOR"
+                    : "REAL-TIME INTELLIGENCE"}
               </div>
               <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
                 {view === "Overview" ? "Market intelligence" : view}
@@ -340,11 +349,13 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
                   ? "A clearer view of what moves your portfolio."
                   : showingLiveMarket
                     ? "Latest quotes for a maintained universe of leading S&P 500 companies."
-                    : view === "Stress testing"
-                      ? "Explore how market shocks could affect your positions."
-                      : view === "Portfolio risk"
-                        ? "Track exposure, concentration, and potential downside."
-                        : "Signals from across the market, distilled into perspective."}
+                    : showingLiveNews
+                      ? "Recent global coverage connected to the companies in your watchlist."
+                      : view === "Stress testing"
+                        ? "Explore how market shocks could affect your positions."
+                        : view === "Portfolio risk"
+                          ? "Track exposure, concentration, and potential downside."
+                          : "Signals from across the market, distilled into perspective."}
               </p>
             </div>
             <div className="text-left sm:text-right">
@@ -355,7 +366,8 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
             </div>
           </div>
           {showingLiveMarket && <MarketOverview />}
-          {!showingLiveMarket && (
+          {showingLiveNews && <NewsFeed />}
+          {!showingProviderData && (
             <div className="index-strip">
               {marketIndices.map((index) => (
                 <div className="index-item" key={index.name}>
@@ -372,7 +384,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               ))}
             </div>
           )}
-          {!showingLiveMarket && (
+          {!showingProviderData && (
             <div className="metric-grid">
               <div className="metric">
                 <div className="flex justify-between">
@@ -430,7 +442,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               </div>
             </div>
           )}
-          {!showingLiveMarket && (
+          {!showingProviderData && (
             <div className="analysis-grid">
               <section className="panel chart-panel">
                 <div className="panel-heading">
@@ -601,7 +613,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               </div>
             </section>
           )}
-          {!showingLiveMarket && (
+          {!showingProviderData && (
             <section className="panel feed-panel mt-5">
               <div className="panel-heading flex-wrap gap-4">
                 <div>
@@ -715,7 +727,12 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
           )}
           <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 pb-7 text-[11px] text-muted-foreground">
             <span>
-              © TRADING WENS · {showingLiveMarket ? "DATA PROVIDED BY ALPACA" : "MARKET SIMULATION"}
+              © TRADING WENS ·{" "}
+              {showingLiveMarket
+                ? "DATA PROVIDED BY ALPACA"
+                : showingLiveNews
+                  ? "NEWS PROVIDED BY GDELT"
+                  : "MARKET SIMULATION"}
             </span>
             <span>For demonstration only. Not financial advice.</span>
           </footer>

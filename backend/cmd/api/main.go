@@ -9,6 +9,7 @@ import (
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/config"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
@@ -38,6 +39,11 @@ func main() {
 		logger.Fatal(err)
 	}
 	marketHandler := httpapi.NewMarketHandler(marketClient)
+	newsClient, err := gdelt.NewClient(cfg.GDELTAPIURL, nil)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	newsHandler := httpapi.NewNewsHandler(newsClient)
 
 	router := http.NewServeMux()
 	router.HandleFunc("/api/v1/auth/login", authHandler.Login)
@@ -45,6 +51,10 @@ func main() {
 	router.Handle(
 		"/api/v1/market/snapshots",
 		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.Snapshots)),
+	)
+	router.Handle(
+		"/api/v1/news",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(newsHandler.Latest)),
 	)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

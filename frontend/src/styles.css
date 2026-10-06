@@ -463,6 +463,32 @@ h3,
 .market-entry:hover {
   background: color-mix(in oklab, var(--primary) 6%, transparent);
 }
+.news-grid {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--border);
+}
+.news-card {
+  min-width: 0;
+  background: var(--card);
+  padding: 18px;
+  transition: background 0.18s ease;
+}
+.news-card:hover {
+  background: var(--secondary);
+}
+.news-symbol {
+  border: 1px solid color-mix(in oklab, var(--primary) 35%, transparent);
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  padding: 3px 6px;
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 600;
+}
 .feed-row {
   display: grid;
   grid-template-columns: minmax(240px, 2.4fr) minmax(100px, 0.8fr) 85px 65px 90px 22px;
@@ -580,6 +606,9 @@ h3,
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .panel {

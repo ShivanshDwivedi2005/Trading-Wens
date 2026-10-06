@@ -47,4 +47,4 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 
-The authenticated market overview uses Alpaca data and is labelled separately from the simulated risk and sentiment features.
+The authenticated market overview uses Alpaca data, and the live risk feed uses current GDELT coverage. Both are labelled separately from the simulated risk and sentiment features.
