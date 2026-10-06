@@ -431,6 +431,38 @@ h3,
 .feed-table {
   display: grid;
 }
+.market-panel {
+  min-height: 520px;
+}
+.market-table {
+  display: grid;
+}
+.market-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.2fr) minmax(90px, 0.7fr) minmax(145px, 0.9fr)
+    minmax(90px, 0.7fr) minmax(190px, 1.15fr) minmax(80px, 0.6fr);
+  align-items: center;
+  gap: 16px;
+}
+.market-head {
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px 12px;
+  color: var(--muted-foreground);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.market-entry {
+  min-height: 58px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  transition: background 0.18s ease;
+}
+.market-entry:hover {
+  background: color-mix(in oklab, var(--primary) 6%, transparent);
+}
 .feed-row {
   display: grid;
   grid-template-columns: minmax(240px, 2.4fr) minmax(100px, 0.8fr) 85px 65px 90px 22px;

@@ -17,15 +17,18 @@ The intended backend responsibilities are separated by domain: source ingestion,
 
 ## Local development
 
-Requirements: Node.js 20 or newer and pnpm 11 or newer.
+Requirements: Node.js 20 or newer, pnpm 11 or newer, and Go 1.23 or newer.
 
 ```sh
 pnpm install
 copy frontend\.env.example frontend\.env
+copy .env.example .env
+cd backend && go run ./cmd/api
+cd ..
 pnpm dev
 ```
 
-Fill in the Supabase values in `frontend/.env` before using authentication. The file is ignored by Git.
+Fill in the public Supabase values in `frontend/.env` and the server-side provider values in `.env`. Both files are ignored by Git. During local development the backend reads the public auth project from `frontend/.env` so it can validate the same sessions the browser creates. Alpaca and Supabase secret keys remain server-only.
 
 ## Quality checks
 
@@ -40,6 +43,8 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
 - Supabase authentication and PostgreSQL
-- Go backend planned under `backend/`
+- Go backend with Supabase session validation and normalized Alpaca snapshots
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
+
+The authenticated market overview uses Alpaca data and is labelled separately from the simulated risk and sentiment features.

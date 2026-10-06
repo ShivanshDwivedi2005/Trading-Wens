@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/config"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
@@ -24,10 +26,26 @@ func main() {
 		logger.Fatal(err)
 	}
 	authHandler := httpapi.NewAuthHandler(authClient)
+	marketClient, err := alpaca.NewClient(
+		cfg.AlpacaDataURL,
+		cfg.AlpacaAPIKeyID,
+		cfg.AlpacaAPISecretKey,
+		cfg.AlpacaDataFeed,
+		market.SP500TopThirty,
+		nil,
+	)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	marketHandler := httpapi.NewMarketHandler(marketClient)
 
 	router := http.NewServeMux()
 	router.HandleFunc("/api/v1/auth/login", authHandler.Login)
 	router.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
+	router.Handle(
+		"/api/v1/market/snapshots",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.Snapshots)),
+	)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -36,7 +54,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              cfg.Address,
-		Handler:           router,
+		Handler:           httpapi.CORS(cfg.CORSAllowedOrigins, router),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

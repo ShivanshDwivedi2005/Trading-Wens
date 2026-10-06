@@ -216,3 +216,35 @@ func TestSignupCreatesProfileForImmediateSession(t *testing.T) {
 		t.Fatalf("did not expect email confirmation requirement")
 	}
 }
+
+func TestUserValidatesAccessToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/auth/v1/user" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("apikey") != "publishable-key" || r.Header.Get("Authorization") != "Bearer access-token" {
+			t.Fatal("expected Supabase authentication headers")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id":"user-1",
+			"email":"analyst@example.com",
+			"email_confirmed_at":"2026-10-06T10:00:00Z",
+			"user_metadata":{"full_name":"Risk Analyst"}
+		}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "publishable-key", server.Client())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	user, err := client.User(context.Background(), "access-token")
+	if err != nil {
+		t.Fatalf("get user: %v", err)
+	}
+	if user.ID != "user-1" || user.DisplayName != "Risk Analyst" {
+		t.Fatalf("unexpected user: %#v", user)
+	}
+}

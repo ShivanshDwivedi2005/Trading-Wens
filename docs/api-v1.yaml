@@ -1,0 +1,92 @@
+openapi: 3.1.0
+info:
+  title: Trading Wens API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/market/snapshots:
+    get:
+      summary: Get the current large-cap market watchlist
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Latest normalized Alpaca snapshots in maintained watchlist order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketSnapshotResponse"
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "502":
+          description: Authentication or market-data provider unavailable
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    MarketSnapshotResponse:
+      type: object
+      required: [data, as_of, feed, source, count]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketSnapshot"
+        as_of:
+          type: string
+          format: date-time
+        feed:
+          type: string
+          enum: [iex, sip, delayed_sip, boats, overnight, otc]
+        source:
+          type: string
+          const: alpaca
+        count:
+          type: integer
+          minimum: 0
+    MarketSnapshot:
+      type: object
+      required:
+        - symbol
+        - name
+        - price
+        - change
+        - change_percent
+        - open
+        - high
+        - low
+        - previous_close
+        - volume
+        - timestamp
+        - available
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        change:
+          type: number
+        change_percent:
+          type: number
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        previous_close:
+          type: number
+        volume:
+          type: integer
+          minimum: 0
+        timestamp:
+          type: string
+          format: date-time
+        available:
+          type: boolean

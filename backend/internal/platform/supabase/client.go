@@ -102,6 +102,45 @@ func (c *Client) Signup(ctx context.Context, email, password, displayName string
 	return result, nil
 }
 
+func (c *Client) User(ctx context.Context, accessToken string) (domain.User, error) {
+	accessToken = strings.TrimSpace(accessToken)
+	if accessToken == "" {
+		return domain.User{}, errors.New("access token is required")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/auth/v1/user", nil)
+	if err != nil {
+		return domain.User{}, fmt.Errorf("create user request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("apikey", c.apiKey)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return domain.User{}, fmt.Errorf("send user request: %w", err)
+	}
+	defer res.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(res.Body, maxResponseSize))
+	if err != nil {
+		return domain.User{}, fmt.Errorf("read user response: %w", err)
+	}
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return domain.User{}, decodeAPIError(res.StatusCode, responseBody)
+	}
+
+	var providerResponse providerUser
+	if err := json.Unmarshal(responseBody, &providerResponse); err != nil {
+		return domain.User{}, fmt.Errorf("decode user response: %w", err)
+	}
+	user := providerResponse.normalize()
+	if user.ID == "" {
+		return domain.User{}, errors.New("Supabase user response did not contain a user ID")
+	}
+	return user, nil
+}
+
 func (c *Client) authenticate(ctx context.Context, path string, payload any) (domain.AuthResult, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -204,14 +243,7 @@ type providerUser struct {
 
 func (r providerAuthResponse) normalize() domain.AuthResult {
 	result := domain.AuthResult{
-		User: domain.User{
-			ID:               r.User.ID,
-			Email:            r.User.Email,
-			EmailConfirmedAt: r.User.EmailConfirmedAt,
-		},
-	}
-	if displayName, ok := r.User.UserMetadata["full_name"].(string); ok {
-		result.User.DisplayName = strings.TrimSpace(displayName)
+		User: r.User.normalize(),
 	}
 
 	if r.Session != nil && r.Session.AccessToken != "" {
@@ -231,6 +263,18 @@ func (r providerAuthResponse) normalize() domain.AuthResult {
 	}
 
 	return result
+}
+
+func (u providerUser) normalize() domain.User {
+	user := domain.User{
+		ID:               u.ID,
+		Email:            u.Email,
+		EmailConfirmedAt: u.EmailConfirmedAt,
+	}
+	if displayName, ok := u.UserMetadata["full_name"].(string); ok {
+		user.DisplayName = strings.TrimSpace(displayName)
+	}
+	return user
 }
 
 func decodeAPIError(status int, body []byte) error {
