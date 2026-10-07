@@ -33,6 +33,7 @@ test-results
 .dev.vars
 
 # Editor directories and files
+.cursor/
 .vscode/*
 !.vscode/extensions.json
 .idea
