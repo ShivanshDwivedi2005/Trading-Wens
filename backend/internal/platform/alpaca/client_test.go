@@ -95,3 +95,69 @@ func TestSnapshotsRejectsProviderFailure(t *testing.T) {
 		t.Fatal("expected provider error")
 	}
 }
+
+func TestHistoryNormalizesAndCachesBars(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.URL.Path != "/v2/stocks/AAPL/bars" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("timeframe") != "15Min" || r.URL.Query().Get("feed") != "iex" || r.URL.Query().Get("sort") != "asc" {
+			t.Fatalf("unexpected query: %s", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"bars":[
+			{"t":"2026-10-06T15:30:00Z","o":250,"h":252,"l":249.5,"c":251.5,"v":125000},
+			{"t":"2026-10-06T15:45:00Z","o":251.5,"h":253,"l":251,"c":252.75,"v":140000}
+		]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(
+		server.URL,
+		"key-id",
+		"secret-key",
+		"iex",
+		[]domain.MarketSymbol{{Symbol: "AAPL", Name: "Apple"}},
+		server.Client(),
+	)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+
+	first, err := client.History(context.Background(), "aapl", "5d")
+	if err != nil {
+		t.Fatalf("fetch history: %v", err)
+	}
+	second, err := client.History(context.Background(), "AAPL", "5D")
+	if err != nil {
+		t.Fatalf("fetch cached history: %v", err)
+	}
+	if requests != 1 || first.Count != 2 || len(second.Data) != 2 {
+		t.Fatalf("unexpected history cache result: requests=%d result=%#v", requests, first)
+	}
+	if first.Symbol != "AAPL" || first.Range != "5D" || first.Timeframe != "15Min" || first.Data[1].Close != 252.75 {
+		t.Fatalf("unexpected normalized history: %#v", first)
+	}
+}
+
+func TestHistoryRejectsUnknownSymbolAndRange(t *testing.T) {
+	client, err := NewClient(
+		"https://data.example.com",
+		"key-id",
+		"secret-key",
+		"iex",
+		[]domain.MarketSymbol{{Symbol: "AAPL", Name: "Apple"}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	if _, err := client.History(context.Background(), "MSFT", "1D"); err != domain.ErrUnsupportedSymbol {
+		t.Fatalf("expected unsupported symbol, got %v", err)
+	}
+	if _, err := client.History(context.Background(), "AAPL", "1Y"); err != domain.ErrUnsupportedRange {
+		t.Fatalf("expected unsupported range, got %v", err)
+	}
+}

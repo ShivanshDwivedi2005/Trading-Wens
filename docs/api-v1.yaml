@@ -8,6 +8,12 @@ paths:
   /api/v1/news:
     get:
       summary: Get recent large-cap company news
+      parameters:
+        - in: query
+          name: symbol
+          schema:
+            type: string
+          description: Optional supported watchlist symbol for a focused company query
       security:
         - bearerAuth: []
       responses:
@@ -21,6 +27,38 @@ paths:
           description: Missing, expired, or invalid Supabase access token
         "502":
           description: Authentication or news provider unavailable
+  /api/v1/market/stocks/{symbol}/history:
+    get:
+      summary: Get recent Alpaca bars for one supported stock
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: symbol
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: range
+          schema:
+            type: string
+            enum: [1D, 5D, 1M]
+            default: 1D
+      responses:
+        "200":
+          description: Provider-normalized historical bars in ascending timestamp order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockHistoryResponse"
+        "400":
+          description: Unsupported history range
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "404":
+          description: Symbol is outside the maintained market universe
+        "502":
+          description: Authentication or market-data provider unavailable
   /api/v1/market/snapshots:
     get:
       summary: Get the current large-cap market watchlist
@@ -114,6 +152,53 @@ components:
           type: string
           const: alpaca
         count:
+          type: integer
+          minimum: 0
+    StockHistoryResponse:
+      type: object
+      required: [symbol, name, data, as_of, range, timeframe, feed, source, count]
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketBar"
+        as_of:
+          type: string
+          format: date-time
+        range:
+          type: string
+          enum: [1D, 5D, 1M]
+        timeframe:
+          type: string
+          enum: [5Min, 15Min, 1Hour]
+        feed:
+          type: string
+        source:
+          type: string
+          const: alpaca
+        count:
+          type: integer
+          minimum: 0
+    MarketBar:
+      type: object
+      required: [timestamp, open, high, low, close, volume]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
           type: integer
           minimum: 0
     MarketSnapshot:

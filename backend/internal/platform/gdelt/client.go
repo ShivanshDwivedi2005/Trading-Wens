@@ -24,13 +24,18 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	cacheTTL   time.Duration
+	symbols    []domain.MarketSymbol
 
-	mu       sync.Mutex
-	cached   domain.NewsFeed
+	mu    sync.Mutex
+	cache map[string]cachedFeed
+}
+
+type cachedFeed struct {
+	value    domain.NewsFeed
 	cachedAt time.Time
 }
 
-func NewClient(baseURL string, httpClient *http.Client) (*Client, error) {
+func NewClient(baseURL string, symbols []domain.MarketSymbol, httpClient *http.Client) (*Client, error) {
 	parsedURL, err := url.Parse(strings.TrimSpace(baseURL))
 	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
 		return nil, errors.New("invalid GDELT API URL")
@@ -38,19 +43,36 @@ func NewClient(baseURL string, httpClient *http.Client) (*Client, error) {
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 20 * time.Second}
 	}
+	if len(symbols) == 0 {
+		return nil, errors.New("at least one news symbol is required")
+	}
 	return &Client{
 		baseURL:    parsedURL.String(),
 		httpClient: httpClient,
 		cacheTTL:   2 * time.Minute,
+		symbols:    append([]domain.MarketSymbol(nil), symbols...),
+		cache:      make(map[string]cachedFeed),
 	}, nil
 }
 
 func (c *Client) Latest(ctx context.Context) (domain.NewsFeed, error) {
+	return c.fetch(ctx, "market", marketQuery(c.symbols), "24h", "50", "")
+}
+
+func (c *Client) LatestForSymbol(ctx context.Context, requestedSymbol string) (domain.NewsFeed, error) {
+	symbol, ok := c.findSymbol(requestedSymbol)
+	if !ok {
+		return domain.NewsFeed{}, domain.ErrUnsupportedSymbol
+	}
+	return c.fetch(ctx, "symbol:"+symbol.Symbol, companyQuery(symbol), "3d", "25", symbol.Symbol)
+}
+
+func (c *Client) fetch(ctx context.Context, cacheKey, queryText, timespan, maxRecords, forcedSymbol string) (domain.NewsFeed, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if !c.cachedAt.IsZero() && time.Since(c.cachedAt) < c.cacheTTL {
-		return cloneFeed(c.cached), nil
+	if cached, ok := c.cache[cacheKey]; ok && time.Since(cached.cachedAt) < c.cacheTTL {
+		return cloneFeed(cached.value), nil
 	}
 
 	endpoint, err := url.Parse(c.baseURL)
@@ -58,11 +80,11 @@ func (c *Client) Latest(ctx context.Context) (domain.NewsFeed, error) {
 		return domain.NewsFeed{}, fmt.Errorf("create GDELT URL: %w", err)
 	}
 	query := endpoint.Query()
-	query.Set("query", marketQuery())
+	query.Set("query", queryText)
 	query.Set("mode", "artlist")
 	query.Set("format", "json")
-	query.Set("maxrecords", "50")
-	query.Set("timespan", "24h")
+	query.Set("maxrecords", maxRecords)
+	query.Set("timespan", timespan)
 	query.Set("sort", "datedesc")
 	endpoint.RawQuery = query.Encode()
 
@@ -94,7 +116,7 @@ func (c *Client) Latest(ctx context.Context) (domain.NewsFeed, error) {
 	articles := make([]domain.NewsArticle, 0, len(payload.Articles))
 	seen := make(map[string]struct{}, len(payload.Articles))
 	for _, providerArticle := range payload.Articles {
-		article, ok := normalizeArticle(providerArticle)
+		article, ok := normalizeArticle(providerArticle, c.symbols, forcedSymbol)
 		if !ok {
 			continue
 		}
@@ -111,8 +133,7 @@ func (c *Client) Latest(ctx context.Context) (domain.NewsFeed, error) {
 		Source: "gdelt",
 		Count:  len(articles),
 	}
-	c.cached = cloneFeed(result)
-	c.cachedAt = result.AsOf
+	c.cache[cacheKey] = cachedFeed{value: cloneFeed(result), cachedAt: result.AsOf}
 	return result, nil
 }
 
@@ -130,7 +151,7 @@ type providerArticle struct {
 	SourceCountry string `json:"sourcecountry"`
 }
 
-func normalizeArticle(provider providerArticle) (domain.NewsArticle, bool) {
+func normalizeArticle(provider providerArticle, symbols []domain.MarketSymbol, forcedSymbol string) (domain.NewsArticle, bool) {
 	articleURL, err := url.Parse(strings.TrimSpace(provider.URL))
 	if err != nil || (articleURL.Scheme != "http" && articleURL.Scheme != "https") || articleURL.Host == "" {
 		return domain.NewsArticle{}, false
@@ -149,6 +170,11 @@ func normalizeArticle(provider providerArticle) (domain.NewsArticle, bool) {
 		imageURL = parsedImage.String()
 	}
 	digest := sha256.Sum256([]byte(articleURL.String()))
+	matchedSymbols := matchSymbols(title, symbols)
+	if forcedSymbol != "" && !containsSymbol(matchedSymbols, forcedSymbol) {
+		matchedSymbols = append(matchedSymbols, forcedSymbol)
+		sort.Strings(matchedSymbols)
+	}
 	return domain.NewsArticle{
 		ID:             hex.EncodeToString(digest[:8]),
 		Title:          title,
@@ -158,40 +184,63 @@ func normalizeArticle(provider providerArticle) (domain.NewsArticle, bool) {
 		Language:       strings.TrimSpace(provider.Language),
 		SourceCountry:  strings.TrimSpace(provider.SourceCountry),
 		ImageURL:       imageURL,
-		MatchedSymbols: matchSymbols(title),
+		MatchedSymbols: matchedSymbols,
 	}, true
 }
 
-func marketQuery() string {
-	return `("NVIDIA" OR "Apple" OR "Alphabet" OR "Microsoft" OR "Amazon" OR "Broadcom" OR "Meta Platforms" OR "Tesla" OR "Berkshire Hathaway" OR "Eli Lilly" OR "JPMorgan" OR "Walmart" OR "Visa" OR "Oracle" OR "Exxon Mobil" OR "Johnson & Johnson" OR "Mastercard" OR "Netflix" OR "Costco" OR "AbbVie" OR "Home Depot" OR "Procter & Gamble" OR "Bank of America" OR "GE Aerospace" OR "Coca-Cola" OR "Cisco" OR "Caterpillar" OR "Philip Morris" OR "IBM" OR "Chevron") sourcelang:english`
+func marketQuery(symbols []domain.MarketSymbol) string {
+	terms := make([]string, 0, len(symbols))
+	for _, symbol := range symbols {
+		terms = append(terms, quoteTerm(symbol.Name))
+	}
+	return "(" + strings.Join(terms, " OR ") + ") sourcelang:english"
 }
 
-func matchSymbols(title string) []string {
-	lowerTitle := strings.ToLower(title)
-	aliases := map[string][]string{
-		"AAPL": {"apple"}, "ABBV": {"abbvie"}, "AMZN": {"amazon"}, "AVGO": {"broadcom"},
-		"BAC": {"bank of america"}, "BRK.B": {"berkshire hathaway"}, "CAT": {"caterpillar"},
-		"COST": {"costco"}, "CSCO": {"cisco"}, "CVX": {"chevron"}, "GE": {"ge aerospace"},
-		"GOOGL": {"alphabet", "google"}, "HD": {"home depot"}, "IBM": {"ibm"},
-		"JNJ": {"johnson & johnson", "johnson and johnson"}, "JPM": {"jpmorgan"},
-		"KO": {"coca-cola", "coca cola"}, "LLY": {"eli lilly"}, "MA": {"mastercard"},
-		"META": {"meta platforms", "facebook"}, "MSFT": {"microsoft"}, "NFLX": {"netflix"},
-		"NVDA": {"nvidia"}, "ORCL": {"oracle"}, "PG": {"procter & gamble", "procter and gamble"},
-		"PM": {"philip morris"}, "TSLA": {"tesla"}, "V": {"visa"}, "WMT": {"walmart"},
-		"XOM": {"exxon mobil", "exxonmobil"},
+func companyQuery(symbol domain.MarketSymbol) string {
+	terms := []string{quoteTerm(symbol.Name), quoteTerm(symbol.Symbol)}
+	for _, alias := range symbol.Aliases {
+		terms = append(terms, quoteTerm(alias))
 	}
+	return "(" + strings.Join(terms, " OR ") + ") (stock OR shares OR earnings OR company) sourcelang:english"
+}
 
+func matchSymbols(title string, symbols []domain.MarketSymbol) []string {
+	lowerTitle := strings.ToLower(title)
 	matches := make([]string, 0, 2)
-	for symbol, names := range aliases {
+	for _, symbol := range symbols {
+		names := append([]string{symbol.Name}, symbol.Aliases...)
 		for _, name := range names {
-			if strings.Contains(lowerTitle, name) {
-				matches = append(matches, symbol)
+			if strings.Contains(lowerTitle, strings.ToLower(name)) {
+				matches = append(matches, symbol.Symbol)
 				break
 			}
 		}
 	}
 	sort.Strings(matches)
 	return matches
+}
+
+func (c *Client) findSymbol(value string) (domain.MarketSymbol, bool) {
+	requested := strings.ToUpper(strings.TrimSpace(value))
+	for _, symbol := range c.symbols {
+		if symbol.Symbol == requested {
+			return symbol, true
+		}
+	}
+	return domain.MarketSymbol{}, false
+}
+
+func quoteTerm(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, "") + `"`
+}
+
+func containsSymbol(symbols []string, expected string) bool {
+	for _, symbol := range symbols {
+		if symbol == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func cloneFeed(source domain.NewsFeed) domain.NewsFeed {

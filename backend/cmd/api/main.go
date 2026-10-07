@@ -39,7 +39,7 @@ func main() {
 		logger.Fatal(err)
 	}
 	marketHandler := httpapi.NewMarketHandler(marketClient)
-	newsClient, err := gdelt.NewClient(cfg.GDELTAPIURL, nil)
+	newsClient, err := gdelt.NewClient(cfg.GDELTAPIURL, market.SP500TopThirty, nil)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -51,6 +51,10 @@ func main() {
 	router.Handle(
 		"/api/v1/market/snapshots",
 		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.Snapshots)),
+	)
+	router.Handle(
+		"/api/v1/market/stocks/{symbol}/history",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.History)),
 	)
 	router.Handle(
 		"/api/v1/news",

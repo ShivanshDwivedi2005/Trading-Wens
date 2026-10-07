@@ -7,11 +7,11 @@ import "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
 var SP500TopThirty = []domain.MarketSymbol{
 	{Symbol: "NVDA", Name: "NVIDIA"},
 	{Symbol: "AAPL", Name: "Apple"},
-	{Symbol: "GOOGL", Name: "Alphabet"},
+	{Symbol: "GOOGL", Name: "Alphabet", Aliases: []string{"Google"}},
 	{Symbol: "MSFT", Name: "Microsoft"},
 	{Symbol: "AMZN", Name: "Amazon"},
 	{Symbol: "AVGO", Name: "Broadcom"},
-	{Symbol: "META", Name: "Meta Platforms"},
+	{Symbol: "META", Name: "Meta Platforms", Aliases: []string{"Facebook"}},
 	{Symbol: "TSLA", Name: "Tesla"},
 	{Symbol: "BRK.B", Name: "Berkshire Hathaway"},
 	{Symbol: "LLY", Name: "Eli Lilly"},
@@ -20,19 +20,28 @@ var SP500TopThirty = []domain.MarketSymbol{
 	{Symbol: "V", Name: "Visa"},
 	{Symbol: "ORCL", Name: "Oracle"},
 	{Symbol: "XOM", Name: "Exxon Mobil"},
-	{Symbol: "JNJ", Name: "Johnson & Johnson"},
+	{Symbol: "JNJ", Name: "Johnson & Johnson", Aliases: []string{"Johnson and Johnson"}},
 	{Symbol: "MA", Name: "Mastercard"},
 	{Symbol: "NFLX", Name: "Netflix"},
 	{Symbol: "COST", Name: "Costco"},
 	{Symbol: "ABBV", Name: "AbbVie"},
 	{Symbol: "HD", Name: "Home Depot"},
-	{Symbol: "PG", Name: "Procter & Gamble"},
+	{Symbol: "PG", Name: "Procter & Gamble", Aliases: []string{"Procter and Gamble"}},
 	{Symbol: "BAC", Name: "Bank of America"},
 	{Symbol: "GE", Name: "GE Aerospace"},
-	{Symbol: "KO", Name: "Coca-Cola"},
+	{Symbol: "KO", Name: "Coca-Cola", Aliases: []string{"Coca Cola"}},
 	{Symbol: "CSCO", Name: "Cisco"},
 	{Symbol: "CAT", Name: "Caterpillar"},
 	{Symbol: "PM", Name: "Philip Morris"},
 	{Symbol: "IBM", Name: "IBM"},
 	{Symbol: "CVX", Name: "Chevron"},
+}
+
+func FindSymbol(value string) (domain.MarketSymbol, bool) {
+	for _, symbol := range SP500TopThirty {
+		if symbol.Symbol == value {
+			return symbol, true
+		}
+	}
+	return domain.MarketSymbol{}, false
 }

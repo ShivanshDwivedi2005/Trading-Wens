@@ -26,8 +26,14 @@ type Client struct {
 	httpClient *http.Client
 	cacheTTL   time.Duration
 
-	mu       sync.Mutex
-	cached   domain.MarketSnapshotSet
+	mu           sync.Mutex
+	cached       domain.MarketSnapshotSet
+	cachedAt     time.Time
+	historyCache map[string]cachedHistory
+}
+
+type cachedHistory struct {
+	value    domain.StockHistory
 	cachedAt time.Time
 }
 
@@ -47,13 +53,14 @@ func NewClient(baseURL, keyID, secretKey, feed string, symbols []domain.MarketSy
 	}
 
 	return &Client{
-		baseURL:    parsedURL.String(),
-		keyID:      strings.TrimSpace(keyID),
-		secretKey:  strings.TrimSpace(secretKey),
-		feed:       valueOrDefault(strings.TrimSpace(feed), "iex"),
-		symbols:    append([]domain.MarketSymbol(nil), symbols...),
-		httpClient: httpClient,
-		cacheTTL:   10 * time.Second,
+		baseURL:      parsedURL.String(),
+		keyID:        strings.TrimSpace(keyID),
+		secretKey:    strings.TrimSpace(secretKey),
+		feed:         valueOrDefault(strings.TrimSpace(feed), "iex"),
+		symbols:      append([]domain.MarketSymbol(nil), symbols...),
+		httpClient:   httpClient,
+		cacheTTL:     10 * time.Second,
+		historyCache: make(map[string]cachedHistory),
 	}, nil
 }
 
@@ -126,6 +133,96 @@ func (c *Client) Snapshots(ctx context.Context) (domain.MarketSnapshotSet, error
 	return result, nil
 }
 
+func (c *Client) History(ctx context.Context, requestedSymbol, requestedRange string) (domain.StockHistory, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	symbol, ok := c.findSymbol(requestedSymbol)
+	if !ok {
+		return domain.StockHistory{}, domain.ErrUnsupportedSymbol
+	}
+	historyRange, timeframe, lookback, limit, err := historyWindow(requestedRange)
+	if err != nil {
+		return domain.StockHistory{}, err
+	}
+	cacheKey := symbol.Symbol + ":" + historyRange
+	if cached, ok := c.historyCache[cacheKey]; ok && time.Since(cached.cachedAt) < 30*time.Second {
+		return cloneHistory(cached.value), nil
+	}
+
+	endpoint, err := url.Parse(c.baseURL + "/v2/stocks/" + url.PathEscape(symbol.Symbol) + "/bars")
+	if err != nil {
+		return domain.StockHistory{}, fmt.Errorf("create Alpaca bars URL: %w", err)
+	}
+	now := time.Now().UTC()
+	query := endpoint.Query()
+	query.Set("feed", c.feed)
+	query.Set("timeframe", timeframe)
+	query.Set("start", now.Add(-lookback).Format(time.RFC3339))
+	query.Set("end", now.Format(time.RFC3339))
+	query.Set("limit", fmt.Sprintf("%d", limit))
+	query.Set("sort", "asc")
+	query.Set("adjustment", "raw")
+	endpoint.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	if err != nil {
+		return domain.StockHistory{}, fmt.Errorf("create Alpaca bars request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("APCA-API-KEY-ID", c.keyID)
+	req.Header.Set("APCA-API-SECRET-KEY", c.secretKey)
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return domain.StockHistory{}, fmt.Errorf("fetch Alpaca bars: %w", err)
+	}
+	defer res.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(res.Body, maxResponseSize))
+	if err != nil {
+		return domain.StockHistory{}, fmt.Errorf("read Alpaca bars response: %w", err)
+	}
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return domain.StockHistory{}, fmt.Errorf("Alpaca bars request failed with status %d", res.StatusCode)
+	}
+
+	var payload providerBarsResponse
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return domain.StockHistory{}, fmt.Errorf("decode Alpaca bars: %w", err)
+	}
+	bars := make([]domain.MarketBar, 0, len(payload.Bars))
+	for _, bar := range payload.Bars {
+		if bar.Timestamp.IsZero() || bar.Close <= 0 {
+			continue
+		}
+		bars = append(bars, domain.MarketBar{
+			Timestamp: bar.Timestamp,
+			Open:      bar.Open,
+			High:      bar.High,
+			Low:       bar.Low,
+			Close:     bar.Close,
+			Volume:    bar.Volume,
+		})
+	}
+	asOf := now
+	if len(bars) > 0 {
+		asOf = bars[len(bars)-1].Timestamp
+	}
+	result := domain.StockHistory{
+		Symbol:    symbol.Symbol,
+		Name:      symbol.Name,
+		Data:      bars,
+		AsOf:      asOf,
+		Range:     historyRange,
+		Timeframe: timeframe,
+		Feed:      c.feed,
+		Source:    "alpaca",
+		Count:     len(bars),
+	}
+	c.historyCache[cacheKey] = cachedHistory{value: cloneHistory(result), cachedAt: now}
+	return result, nil
+}
+
 type providerSnapshot struct {
 	LatestTrade      providerTrade `json:"latestTrade"`
 	MinuteBar        providerBar   `json:"minuteBar"`
@@ -145,6 +242,10 @@ type providerBar struct {
 	Low       float64   `json:"l"`
 	Close     float64   `json:"c"`
 	Volume    uint64    `json:"v"`
+}
+
+type providerBarsResponse struct {
+	Bars []providerBar `json:"bars"`
 }
 
 func normalizeSnapshot(symbol domain.MarketSymbol, provider providerSnapshot) domain.MarketSnapshot {
@@ -202,4 +303,33 @@ func valueOrDefault(value, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func (c *Client) findSymbol(value string) (domain.MarketSymbol, bool) {
+	requested := strings.ToUpper(strings.TrimSpace(value))
+	for _, symbol := range c.symbols {
+		if symbol.Symbol == requested {
+			return symbol, true
+		}
+	}
+	return domain.MarketSymbol{}, false
+}
+
+func historyWindow(value string) (string, string, time.Duration, int, error) {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "", "1D":
+		return "1D", "5Min", 72 * time.Hour, 500, nil
+	case "5D":
+		return "5D", "15Min", 10 * 24 * time.Hour, 1000, nil
+	case "1M":
+		return "1M", "1Hour", 45 * 24 * time.Hour, 1000, nil
+	default:
+		return "", "", 0, 0, domain.ErrUnsupportedRange
+	}
+}
+
+func cloneHistory(source domain.StockHistory) domain.StockHistory {
+	cloned := source
+	cloned.Data = append([]domain.MarketBar(nil), source.Data...)
+	return cloned
 }

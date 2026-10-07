@@ -4,7 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
 )
 
 func TestLatestNormalizesAndCachesArticles(t *testing.T) {
@@ -22,7 +25,7 @@ func TestLatestNormalizesAndCachesArticles(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client, err := NewClient(server.URL, server.Client())
+	client, err := NewClient(server.URL, []domain.MarketSymbol{{Symbol: "NVDA", Name: "NVIDIA"}}, server.Client())
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
@@ -48,11 +51,33 @@ func TestLatestRejectsProviderFailure(t *testing.T) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer server.Close()
-	client, err := NewClient(server.URL, server.Client())
+	client, err := NewClient(server.URL, []domain.MarketSymbol{{Symbol: "NVDA", Name: "NVIDIA"}}, server.Client())
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
 	if _, err := client.Latest(context.Background()); err == nil {
 		t.Fatal("expected provider error")
+	}
+}
+
+func TestLatestForSymbolBuildsFocusedQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		if !strings.Contains(query, `"Alphabet"`) || !strings.Contains(query, `"GOOGL"`) || r.URL.Query().Get("timespan") != "3d" {
+			t.Fatalf("unexpected focused query: %s", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"articles":[{"url":"https://example.com/alphabet","title":"Cloud demand lifts technology shares","seendate":"20261006T155959Z","domain":"example.com","language":"English","sourcecountry":"United States"}]}`))
+	}))
+	defer server.Close()
+	client, err := NewClient(server.URL, []domain.MarketSymbol{{Symbol: "GOOGL", Name: "Alphabet", Aliases: []string{"Google"}}}, server.Client())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	feed, err := client.LatestForSymbol(context.Background(), "googl")
+	if err != nil {
+		t.Fatalf("fetch focused news: %v", err)
+	}
+	if feed.Count != 1 || len(feed.Data[0].MatchedSymbols) != 1 || feed.Data[0].MatchedSymbols[0] != "GOOGL" {
+		t.Fatalf("unexpected focused news: %#v", feed)
 	}
 }
