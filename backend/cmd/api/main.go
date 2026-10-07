@@ -39,6 +39,16 @@ func main() {
 		logger.Fatal(err)
 	}
 	marketHandler := httpapi.NewMarketHandler(marketClient)
+	tradingClient, err := alpaca.NewTradingClient(
+		cfg.AlpacaTradingURL,
+		cfg.AlpacaAPIKeyID,
+		cfg.AlpacaAPISecretKey,
+		nil,
+	)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	tradingHandler := httpapi.NewTradingHandler(tradingClient)
 	newsClient, err := gdelt.NewClient(cfg.GDELTAPIURL, market.SP500TopThirty, nil)
 	if err != nil {
 		logger.Fatal(err)
@@ -59,6 +69,18 @@ func main() {
 	router.Handle(
 		"/api/v1/news",
 		httpapi.RequireAuth(authClient, http.HandlerFunc(newsHandler.Latest)),
+	)
+	router.Handle(
+		"/api/v1/trading/portfolio",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Portfolio)),
+	)
+	router.Handle(
+		"/api/v1/trading/assets",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Assets)),
+	)
+	router.Handle(
+		"/api/v1/trading/orders",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.SubmitOrder)),
 	)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

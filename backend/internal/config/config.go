@@ -14,6 +14,7 @@ type Config struct {
 	SupabaseURL            string
 	SupabasePublishableKey string
 	AlpacaDataURL          string
+	AlpacaTradingURL       string
 	AlpacaAPIKeyID         string
 	AlpacaAPISecretKey     string
 	AlpacaDataFeed         string
@@ -39,6 +40,7 @@ func Load() (Config, error) {
 			"SUPABASE_PUBLISHABLE_KEY",
 		),
 		AlpacaDataURL:      strings.TrimRight(valueOrDefault("ALPACA_DATA_REST_URL", "https://data.alpaca.markets"), "/"),
+		AlpacaTradingURL:   strings.TrimRight(valueOrDefault("ALPACA_TRADING_REST_URL", "https://paper-api.alpaca.markets"), "/"),
 		AlpacaAPIKeyID:     strings.TrimSpace(os.Getenv("ALPACA_API_KEY_ID")),
 		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
@@ -68,6 +70,9 @@ func Load() (Config, error) {
 	}
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {
 		return Config{}, errors.New("ALPACA_DATA_REST_URL must be an HTTP or HTTPS URL")
+	}
+	if cfg.AlpacaTradingURL != "https://paper-api.alpaca.markets" {
+		return Config{}, errors.New("ALPACA_TRADING_REST_URL must use the Alpaca paper trading endpoint")
 	}
 	if !strings.HasPrefix(cfg.GDELTAPIURL, "https://") && !strings.HasPrefix(cfg.GDELTAPIURL, "http://") {
 		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
