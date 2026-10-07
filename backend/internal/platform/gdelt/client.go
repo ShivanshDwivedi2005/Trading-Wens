@@ -61,9 +61,13 @@ func (c *Client) Latest(ctx context.Context) (domain.NewsFeed, error) {
 }
 
 func (c *Client) LatestForSymbol(ctx context.Context, requestedSymbol string) (domain.NewsFeed, error) {
+	requestedSymbol = strings.ToUpper(strings.TrimSpace(requestedSymbol))
 	symbol, ok := c.findSymbol(requestedSymbol)
 	if !ok {
-		return domain.NewsFeed{}, domain.ErrUnsupportedSymbol
+		if !validTicker(requestedSymbol) {
+			return domain.NewsFeed{}, domain.ErrUnsupportedSymbol
+		}
+		return c.fetch(ctx, "symbol:"+requestedSymbol, tickerQuery(requestedSymbol), "3d", "25", requestedSymbol)
 	}
 	return c.fetch(ctx, "symbol:"+symbol.Symbol, companyQuery(symbol), "3d", "25", symbol.Symbol)
 }
@@ -213,6 +217,23 @@ func companyQuery(symbol domain.MarketSymbol) string {
 		terms = append(terms, quoteTerm(alias))
 	}
 	return "(" + strings.Join(terms, " OR ") + ") (stock OR shares OR earnings OR company) sourcelang:english"
+}
+
+func tickerQuery(symbol string) string {
+	return "(" + quoteTerm(symbol) + ") (stock OR shares OR earnings OR company) sourcelang:english"
+}
+
+func validTicker(value string) bool {
+	if len(value) == 0 || len(value) > 15 {
+		return false
+	}
+	for index, character := range value {
+		if character >= 'A' && character <= 'Z' || character >= '0' && character <= '9' || (index > 0 && (character == '.' || character == '-')) {
+			continue
+		}
+		return false
+	}
+	return value[0] >= 'A' && value[0] <= 'Z'
 }
 
 func matchSymbols(title string, symbols []domain.MarketSymbol) []string {

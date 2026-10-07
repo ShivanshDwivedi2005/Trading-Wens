@@ -81,3 +81,26 @@ func TestLatestForSymbolBuildsFocusedQuery(t *testing.T) {
 		t.Fatalf("unexpected focused news: %#v", feed)
 	}
 }
+
+func TestLatestForSymbolAcceptsTickerOutsideConfiguredUniverse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("query")
+		if !strings.Contains(query, `"AMD"`) || r.URL.Query().Get("timespan") != "3d" {
+			t.Fatalf("unexpected ticker query: %s", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"articles":[{"url":"https://example.com/amd","title":"Chip shares rise after earnings","seendate":"20261006T155959Z","domain":"example.com","language":"English","sourcecountry":"United States"}]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(server.URL, []domain.MarketSymbol{{Symbol: "AAPL", Name: "Apple"}}, server.Client())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	feed, err := client.LatestForSymbol(context.Background(), "amd")
+	if err != nil {
+		t.Fatalf("fetch ticker news: %v", err)
+	}
+	if feed.Count != 1 || feed.Data[0].MatchedSymbols[0] != "AMD" {
+		t.Fatalf("unexpected ticker news: %#v", feed)
+	}
+}

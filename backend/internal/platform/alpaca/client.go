@@ -139,7 +139,11 @@ func (c *Client) History(ctx context.Context, requestedSymbol, requestedRange st
 
 	symbol, ok := c.findSymbol(requestedSymbol)
 	if !ok {
-		return domain.StockHistory{}, domain.ErrUnsupportedSymbol
+		normalized := strings.ToUpper(strings.TrimSpace(requestedSymbol))
+		if !validMarketSymbol(normalized) {
+			return domain.StockHistory{}, domain.ErrUnsupportedSymbol
+		}
+		symbol = domain.MarketSymbol{Symbol: normalized, Name: normalized}
 	}
 	historyRange, timeframe, lookback, limit, err := historyWindow(requestedRange)
 	if err != nil {
@@ -321,6 +325,19 @@ func (c *Client) findSymbol(value string) (domain.MarketSymbol, bool) {
 		}
 	}
 	return domain.MarketSymbol{}, false
+}
+
+func validMarketSymbol(value string) bool {
+	if len(value) == 0 || len(value) > 15 {
+		return false
+	}
+	for index, character := range value {
+		if character >= 'A' && character <= 'Z' || character >= '0' && character <= '9' || (index > 0 && (character == '.' || character == '-')) {
+			continue
+		}
+		return false
+	}
+	return value[0] >= 'A' && value[0] <= 'Z'
 }
 
 func historyWindow(value string) (string, string, time.Duration, int, error) {

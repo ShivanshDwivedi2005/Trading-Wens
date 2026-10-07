@@ -154,11 +154,40 @@ func TestHistoryRejectsUnknownSymbolAndRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	if _, err := client.History(context.Background(), "MSFT", "1D"); err != domain.ErrUnsupportedSymbol {
+	if _, err := client.History(context.Background(), "$BAD", "1D"); err != domain.ErrUnsupportedSymbol {
 		t.Fatalf("expected unsupported symbol, got %v", err)
 	}
 	if _, err := client.History(context.Background(), "AAPL", "1Y"); err != domain.ErrUnsupportedRange {
 		t.Fatalf("expected unsupported range, got %v", err)
+	}
+}
+
+func TestHistoryAcceptsListedSymbolOutsideSnapshotUniverse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/stocks/AMD/bars" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"bars":[{"t":"2026-10-06T15:30:00Z","o":200,"h":204,"l":199,"c":203,"v":250000}]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(
+		server.URL,
+		"key-id",
+		"secret-key",
+		"iex",
+		[]domain.MarketSymbol{{Symbol: "AAPL", Name: "Apple"}},
+		server.Client(),
+	)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	history, err := client.History(context.Background(), "amd", "5D")
+	if err != nil {
+		t.Fatalf("fetch history: %v", err)
+	}
+	if history.Symbol != "AMD" || history.Name != "AMD" || history.Count != 1 {
+		t.Fatalf("unexpected history: %#v", history)
 	}
 }
 
