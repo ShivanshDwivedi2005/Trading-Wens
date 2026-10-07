@@ -2,77 +2,48 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
-  ArrowDownRight,
-  ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
   Bell,
   BrainCircuit,
-  ChartNoAxesCombined,
-  ChevronDown,
-  CircleHelp,
-  Command,
-  Flame,
+  BriefcaseBusiness,
+  ChartCandlestick,
   LayoutDashboard,
   LogOut,
   Menu,
-  Newspaper,
   Search,
   ShieldAlert,
   SlidersHorizontal,
   Sparkles,
-  TestTubeDiagonal,
-  TrendingUp,
-  X,
 } from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { SignalDetail } from "./SignalDetail";
-import { MarketOverview } from "./MarketOverview";
-import { NewsFeed } from "./NewsFeed";
-import {
-  initialEvents,
-  marketIndices,
-  sentimentHistory,
-  severityRank,
-  type RiskEvent,
-} from "@/lib/market";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { initialEvents, severityRank, type RiskEvent } from "@/lib/market";
+import { LiveTrading } from "./LiveTrading";
+import { AccountOverview, LiveRiskFeed, PortfolioStatus } from "./PortfolioViews";
+import { SignalDetail } from "./SignalDetail";
 
 const navItems = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Live risk feed", icon: Activity },
-  { label: "Market overview", icon: ChartNoAxesCombined },
-  { label: "Market news", icon: Newspaper },
-  { label: "Portfolio risk", icon: ShieldAlert },
-  { label: "Stress testing", icon: TestTubeDiagonal },
-  { label: "Historical analytics", icon: TrendingUp },
+  { label: "Portfolio status", icon: BriefcaseBusiness },
+  { label: "Live Trading", icon: ChartCandlestick },
 ];
+
+const primaryViews = new Set(navItems.map((item) => item.label));
 
 export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [view, setView] = useState("Overview");
+  const [view, setView] = useState(demo ? "AI Risk Signals" : "Overview");
   const [events, setEvents] = useState(initialEvents);
   const [selected, setSelected] = useState<RiskEvent | null>(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All events");
   const [notifications, setNotifications] = useState(false);
-  const [stress, setStress] = useState(20);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileName, setProfileName] = useState("Analyst");
-  const [activeTicker, setActiveTicker] = useState<"NVDA" | "AAPL" | "MSFT">("NVDA");
+
   useEffect(() => {
     if (demo) return;
     let alive = true;
@@ -86,19 +57,21 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
         .select("id")
         .eq("id", data.user.id)
         .maybeSingle();
-      if (alive && !existing)
+      if (alive && !existing) {
         await supabase.from("profiles").upsert({ id: data.user.id, display_name: name });
+      }
     });
     return () => {
       alive = false;
     };
   }, [demo]);
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       setEvents((previous) => {
         const index = Math.floor(Math.random() * previous.length);
-        return previous.map((event, i) =>
-          i === index
+        return previous.map((event, eventIndex) =>
+          eventIndex === index
             ? {
                 ...event,
                 time: "JUST NOW",
@@ -116,29 +89,19 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
     }, 6500);
     return () => window.clearInterval(timer);
   }, []);
-  const shownEvents = useMemo(
-    () =>
-      events
-        .filter(
-          (event) =>
-            `${event.ticker} ${event.company} ${event.headline} ${event.eventType}`
-              .toLowerCase()
-              .includes(search.toLowerCase()) &&
-            (filter === "All events" || event.severity === filter),
-        )
-        .sort((a, b) =>
-          filter === "All events"
-            ? a.id - b.id
-            : severityRank[b.severity] - severityRank[a.severity],
-        ),
-    [events, search, filter],
-  );
+
   const onSignOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
     navigate({ to: "/auth", search: { mode: "login" }, replace: true });
   };
+
+  const chooseView = (nextView: string) => {
+    setView(nextView);
+    setMobileOpen(false);
+  };
+
   const Sidebar = () => (
     <div className="flex h-full flex-col">
       <Link to="/" className="brand flex items-center gap-2.5 px-7 py-8">
@@ -149,17 +112,14 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
           Trading <span className="text-primary">wens</span>
         </span>
       </Link>
-      <div className="px-7 pt-5 pb-3 label text-muted-foreground">WORKSPACE</div>
-      <nav className="space-y-1 px-3">
+      <div className="px-7 pb-3 pt-5 label text-muted-foreground">WORKSPACE</div>
+      <nav className="space-y-1 px-3" aria-label="Workspace">
         {navItems.map((item) => (
           <Button
             key={item.label}
             variant="ghost"
             className={`sidebar-item ${view === item.label ? "sidebar-active" : ""}`}
-            onClick={() => {
-              setView(item.label);
-              setMobileOpen(false);
-            }}
+            onClick={() => chooseView(item.label)}
           >
             <item.icon size={17} />
             <span>{item.label}</span>
@@ -172,24 +132,16 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
         <Button
           variant="ghost"
           className={`sidebar-item ${view === "AI Risk Signals" ? "sidebar-active" : ""}`}
-          onClick={() => {
-            setView("AI Risk Signals");
-            setMobileOpen(false);
-          }}
+          onClick={() => chooseView("AI Risk Signals")}
         >
-          <BrainCircuit size={17} />
-          AI Risk Signals
+          <BrainCircuit size={17} /> AI Risk Signals
         </Button>
         <Button
           variant="ghost"
           className={`sidebar-item ${view === "Alerts" ? "sidebar-active" : ""}`}
-          onClick={() => {
-            setView("Alerts");
-            setMobileOpen(false);
-          }}
+          onClick={() => chooseView("Alerts")}
         >
-          <Bell size={17} />
-          Alerts{" "}
+          <Bell size={17} /> Alerts
           <span className="ml-auto rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] text-destructive">
             3
           </span>
@@ -198,12 +150,12 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
       <div className="mt-auto px-5 pb-5 pt-8">
         <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-            <Sparkles size={14} /> {demo ? "DEMO ENVIRONMENT" : "SIMULATED WORKSPACE"}
+            <Sparkles size={14} /> {demo ? "DEMO ENVIRONMENT" : "ALPACA PAPER ACCOUNT"}
           </div>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {demo
-              ? "Explore with simulated market events. No account required."
-              : "Explore market scenarios with illustrative signals."}
+              ? "Explore simulated monitoring signals. Sign in for live account data."
+              : "Portfolio data and orders use the configured Alpaca paper account."}
           </p>
           {demo && (
             <Button asChild size="sm" className="mt-4 w-full">
@@ -216,14 +168,8 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
       </div>
     </div>
   );
-  const viewingFeed =
-    view === "Overview" ||
-    view === "Live risk feed" ||
-    view === "AI Risk Signals" ||
-    view === "Alerts";
-  const showingLiveMarket = !demo && view === "Market overview";
-  const showingLiveNews = !demo && view === "Market news";
-  const showingProviderData = showingLiveMarket || showingLiveNews;
+
+  const isProviderView = primaryViews.has(view) && !demo;
   return (
     <div className="workspace min-h-screen bg-background text-foreground">
       <aside className="workspace-sidebar hidden lg:block">
@@ -248,18 +194,18 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               <span>/</span>
               <span className="text-foreground">{view}</span>
             </div>
-            <span className="sm:hidden text-sm font-semibold">{view}</span>
+            <span className="truncate text-sm font-semibold sm:hidden">{view}</span>
           </div>
           <div className="flex items-center gap-3 sm:gap-5">
             <span className="hidden items-center gap-2 text-[11px] font-medium text-primary sm:flex">
               <span className="live-pulse size-1.5 rounded-full bg-primary" /> SYSTEM LIVE
             </span>
-            <span className="hidden h-5 w-px bg-border sm:block" />
             <div className="relative">
               <Button
                 variant="ghost"
                 size="icon"
                 aria-label="Notifications"
+                aria-expanded={notifications}
                 onClick={() => setNotifications(!notifications)}
               >
                 <Bell size={18} />
@@ -269,25 +215,24 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
                 <div className="notification-popover">
                   <div className="label mb-4 text-muted-foreground">RECENT ALERTS</div>
                   {events
-                    .filter((e) => e.severity === "Critical" || e.severity === "High")
+                    .filter((event) => severityRank[event.severity] >= 3)
                     .slice(0, 3)
-                    .map((e) => (
+                    .map((event) => (
                       <Button
                         variant="ghost"
-                        key={e.id}
+                        key={event.id}
                         className="h-auto w-full justify-start whitespace-normal border-t border-border px-0 py-3 text-left text-xs leading-5"
                         onClick={() => {
-                          setSelected(e);
+                          setSelected(event);
                           setNotifications(false);
                         }}
                       >
-                        {e.ticker} · {e.headline}
+                        {event.ticker} · {event.headline}
                       </Button>
                     ))}
                 </div>
               )}
             </div>
-            <span className="h-5 w-px bg-border" />
             {demo ? (
               <Button asChild size="sm" variant="outline">
                 <Link to="/auth">
@@ -300,28 +245,21 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
                   {profileName[0]?.toUpperCase()}
                 </div>
                 <span className="hidden max-w-24 truncate text-xs sm:block">{profileName}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Sign out"
-                  title="Sign out"
-                  onClick={onSignOut}
-                >
+                <Button size="icon" variant="ghost" aria-label="Sign out" onClick={onSignOut}>
                   <LogOut size={16} />
                 </Button>
               </div>
             )}
           </div>
         </header>
+
         <main className="workspace-content">
           <div className="demo-banner">
             <span className="flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-accent" />{" "}
-              {showingLiveMarket
-                ? "AUTHENTICATED WORKSPACE · ALPACA MARKET DATA"
-                : showingLiveNews
-                  ? "AUTHENTICATED WORKSPACE · GDELT MARKET NEWS"
-                  : `${demo ? "PUBLIC DEMO" : "WORKSPACE"} · SIMULATED DATA`}
+              <span className="size-1.5 rounded-full bg-accent" />
+              {isProviderView
+                ? "ALPACA PAPER ACCOUNT · LIVE PROVIDER DATA"
+                : "MONITORING · SIMULATED SIGNALS"}
             </span>
             {demo && (
               <Link
@@ -329,414 +267,46 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
                 search={{ mode: "signup" }}
                 className="text-foreground underline underline-offset-4"
               >
-                Unlock your workspace <ArrowRight size={12} className="inline" />
+                Unlock live workspace <ArrowRight size={12} className="inline" />
               </Link>
             )}
           </div>
           <div className="page-intro">
             <div>
               <div className="label flex items-center gap-2 text-primary">
-                <span className="size-1 rounded-full bg-primary" />{" "}
-                {showingLiveMarket
-                  ? "LIVE MARKET OVERVIEW"
-                  : showingLiveNews
-                    ? "LIVE NEWS MONITOR"
-                    : "REAL-TIME INTELLIGENCE"}
+                <span className="size-1 rounded-full bg-primary" />
+                {isProviderView ? "LIVE ACCOUNT WORKSPACE" : "RISK MONITORING"}
               </div>
-              <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
-                {view === "Overview" ? "Market intelligence" : view}
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {view === "Overview"
-                  ? "A clearer view of what moves your portfolio."
-                  : showingLiveMarket
-                    ? "Latest quotes for a maintained universe of leading S&P 500 companies."
-                    : showingLiveNews
-                      ? "Recent global coverage connected to the companies in your watchlist."
-                      : view === "Stress testing"
-                        ? "Explore how market shocks could affect your positions."
-                        : view === "Portfolio risk"
-                          ? "Track exposure, concentration, and potential downside."
-                          : "Signals from across the market, distilled into perspective."}
-              </p>
+              <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{view}</h1>
+              <p className="mt-2 text-sm text-muted-foreground">{viewDescription(view)}</p>
             </div>
             <div className="text-left sm:text-right">
-              <div className="label text-muted-foreground">MARKET STATUS</div>
+              <div className="label text-muted-foreground">ACCOUNT MODE</div>
               <div className="mt-2 flex items-center gap-2 text-xs text-primary sm:justify-end">
-                <span className="size-1.5 rounded-full bg-primary" /> Monitoring active
+                <span className="size-1.5 rounded-full bg-primary" />
+                {isProviderView ? "Paper trading active" : "Monitoring active"}
               </div>
             </div>
           </div>
-          {showingLiveMarket && <MarketOverview />}
-          {showingLiveNews && <NewsFeed />}
-          {!showingProviderData && (
-            <div className="index-strip">
-              {marketIndices.map((index) => (
-                <div className="index-item" key={index.name}>
-                  <div className="label text-muted-foreground">{index.name}</div>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-lg font-semibold tabular-nums">{index.value}</span>
-                    <span
-                      className={`text-xs tabular-nums ${index.positive ? "text-primary" : "text-destructive"}`}
-                    >
-                      {index.change}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+
+          {!demo && view === "Overview" && <AccountOverview />}
+          {!demo && view === "Live risk feed" && <LiveRiskFeed />}
+          {!demo && view === "Portfolio status" && <PortfolioStatus />}
+          {!demo && view === "Live Trading" && <LiveTrading />}
+          {demo && primaryViews.has(view) && <DemoLocked />}
+          {(view === "AI Risk Signals" || view === "Alerts") && (
+            <MonitoringSignals
+              events={events}
+              alertOnly={view === "Alerts"}
+              onSelect={setSelected}
+            />
           )}
-          {!showingProviderData && (
-            <div className="metric-grid">
-              <div className="metric">
-                <div className="flex justify-between">
-                  <span className="label text-muted-foreground">ACTIVE SIGNALS</span>
-                  <Activity size={17} className="text-primary" />
-                </div>
-                <div className="mt-5 flex items-end gap-3">
-                  <span className="text-4xl font-semibold tabular-nums">
-                    {events.length * 21 + 2}
-                  </span>
-                  <span className="mb-1 flex items-center text-xs text-primary">
-                    <ArrowUpRight size={14} /> 12.8%
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">Across monitored markets</p>
-              </div>
-              <div className="metric">
-                <div className="flex justify-between">
-                  <span className="label text-muted-foreground">HIGH-RISK EVENTS</span>
-                  <Flame size={17} className="text-destructive" />
-                </div>
-                <div className="mt-5 flex items-end gap-3">
-                  <span className="text-4xl font-semibold tabular-nums">
-                    {events.filter((e) => severityRank[e.severity] >= 3).length}
-                  </span>
-                  <span className="mb-1 text-xs text-destructive">Needs attention</span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">In your tracked universe</p>
-              </div>
-              <div className="metric">
-                <div className="flex justify-between">
-                  <span className="label text-muted-foreground">MARKET SENTIMENT</span>
-                  <Sparkles size={17} className="text-accent" />
-                </div>
-                <div className="mt-5 flex items-end gap-3">
-                  <span className="text-4xl font-semibold tabular-nums">+0.28</span>
-                  <span className="mb-1 flex items-center text-xs text-primary">
-                    <ArrowUpRight size={14} /> 0.06
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">Weighted signal average</p>
-              </div>
-              <div className="metric">
-                <div className="flex justify-between">
-                  <span className="label text-muted-foreground">PORTFOLIO EXPOSURE</span>
-                  <ShieldAlert size={17} className="text-accent" />
-                </div>
-                <div className="mt-5 flex items-end gap-3">
-                  <span className="text-4xl font-semibold tabular-nums">$874k</span>
-                  <span className="mb-1 flex items-center text-xs text-destructive">
-                    <ArrowDownRight size={14} /> 2.4%
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">Illustrative tracked positions</p>
-              </div>
-            </div>
-          )}
-          {!showingProviderData && (
-            <div className="analysis-grid">
-              <section className="panel chart-panel">
-                <div className="panel-heading">
-                  <div>
-                    <div className="label text-muted-foreground">MARKET PULSE</div>
-                    <h2 className="mt-2 text-lg font-semibold">Sentiment trajectory</h2>
-                  </div>
-                  <div className="flex gap-1 rounded-md border border-border p-1">
-                    {(["NVDA", "AAPL", "MSFT"] as const).map((ticker) => (
-                      <Button
-                        key={ticker}
-                        variant="ghost"
-                        size="sm"
-                        className={`h-7 px-2 text-[11px] ${activeTicker === ticker ? "bg-secondary text-foreground" : "text-muted-foreground"}`}
-                        onClick={() => setActiveTicker(ticker)}
-                      >
-                        {ticker}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-6 h-56 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={sentimentHistory}
-                      margin={{ top: 5, right: 0, left: -32, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="sentimentFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.25} />
-                          <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        vertical={false}
-                        stroke="var(--border)"
-                        strokeDasharray="3 5"
-                      />
-                      <XAxis
-                        dataKey="hour"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-                        interval={1}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
-                        domain={[0, 100]}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          background: "var(--popover)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 4,
-                          color: "var(--foreground)",
-                          fontSize: 12,
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey={activeTicker}
-                        stroke="var(--primary)"
-                        fill="url(#sentimentFill)"
-                        strokeWidth={2}
-                        animationDuration={500}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Sentiment index · 0–100</span>
-                  <span className="flex items-center gap-2">
-                    <span className="size-2 rounded-full bg-primary" /> {activeTicker}
-                  </span>
-                </div>
-              </section>
-              <section className="panel heatmap-panel">
-                <div className="label text-muted-foreground">CROSS-ASSET VIEW</div>
-                <h2 className="mt-2 text-lg font-semibold">Sentiment heatmap</h2>
-                <div className="mt-6 grid grid-cols-3 gap-2">
-                  {events.map((e) => (
-                    <Button
-                      key={e.id}
-                      variant="ghost"
-                      className={`heat-cell h-20 flex-col gap-1 ${e.sentiment >= 0.4 ? "heat-positive" : e.sentiment <= -0.5 ? "heat-negative" : "heat-neutral"}`}
-                      onClick={() => setSelected(e)}
-                    >
-                      <span className="text-sm font-semibold">{e.ticker}</span>
-                      <span className="text-xs tabular-nums">
-                        {e.sentiment > 0 ? "+" : ""}
-                        {e.sentiment.toFixed(2)}
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-                <div className="mt-5 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>NEGATIVE</span>
-                  <div className="flex gap-1">
-                    <span className="h-2 w-8 bg-destructive/60" />
-                    <span className="h-2 w-8 bg-accent/50" />
-                    <span className="h-2 w-8 bg-primary/60" />
-                  </div>
-                  <span>POSITIVE</span>
-                </div>
-              </section>
-            </div>
-          )}
-          {view === "Stress testing" && (
-            <section className="panel mt-5">
-              <div className="panel-heading">
-                <div>
-                  <div className="label text-muted-foreground">SCENARIO SIMULATOR</div>
-                  <h2 className="mt-2 text-lg font-semibold">Market downturn</h2>
-                </div>
-                <TestTubeDiagonal className="text-primary" size={20} />
-              </div>
-              <div className="mt-6 grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
-                <div>
-                  <label htmlFor="stress-range" className="text-sm">
-                    Index decline: <strong>{stress}%</strong>
-                  </label>
-                  <input
-                    id="stress-range"
-                    type="range"
-                    min="5"
-                    max="50"
-                    step="5"
-                    value={stress}
-                    onChange={(e) => setStress(Number(e.target.value))}
-                    className="mt-4 w-full accent-primary"
-                  />
-                </div>
-                <div className="min-w-44 rounded border border-destructive/30 bg-destructive/10 p-4">
-                  <div className="label text-muted-foreground">EST. PORTFOLIO IMPACT</div>
-                  <div className="mt-2 text-xl font-semibold text-destructive">
-                    -${Math.round(((874400 * stress) / 100) * 0.78).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              <p className="mt-5 text-xs text-muted-foreground">
-                Illustrative scenario, not a forecast or investment advice.
-              </p>
-            </section>
-          )}
-          {view === "Portfolio risk" && (
-            <section className="panel mt-5">
-              <div className="label text-muted-foreground">EXPOSURE BREAKDOWN</div>
-              <h2 className="mt-2 text-lg font-semibold">Monitored positions</h2>
-              <div className="mt-6 space-y-4">
-                {events.slice(0, 5).map((e) => (
-                  <div key={e.id} className="flex items-center gap-4">
-                    <span className="w-12 text-xs font-semibold">{e.ticker}</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{
-                          width: `${Math.min(100, parseInt(e.exposure.replace(/\D/g, "")) / 2500)}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="w-20 text-right text-xs tabular-nums text-muted-foreground">
-                      {e.exposure}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {!showingProviderData && (
-            <section className="panel feed-panel mt-5">
-              <div className="panel-heading flex-wrap gap-4">
-                <div>
-                  <div className="label flex items-center gap-2 text-primary">
-                    <span className="live-pulse size-1.5 rounded-full bg-primary" /> LIVE MONITORING
-                  </div>
-                  <h2 className="mt-2 text-lg font-semibold">
-                    {view === "Alerts"
-                      ? "Priority alerts"
-                      : viewingFeed
-                        ? "Live risk feed"
-                        : "Latest signals"}
-                  </h2>
-                </div>
-                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                  <div className="relative min-w-0 flex-1 sm:w-52 sm:flex-none">
-                    <Search size={15} className="absolute left-3 top-2.5 text-muted-foreground" />
-                    <Input
-                      aria-label="Search company or event"
-                      placeholder="Search company or event"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="h-9 border-border bg-secondary/40 pl-9 text-xs"
-                    />
-                  </div>
-                  <div className="relative">
-                    <SlidersHorizontal
-                      size={14}
-                      className="pointer-events-none absolute left-3 top-2.5 text-muted-foreground"
-                    />
-                    <select
-                      aria-label="Filter severity"
-                      value={filter}
-                      onChange={(e) => setFilter(e.target.value)}
-                      className="h-9 appearance-none rounded-md border border-border bg-secondary/40 pl-9 pr-8 text-xs text-foreground"
-                    >
-                      <option>All events</option>
-                      <option>Critical</option>
-                      <option>High</option>
-                      <option>Moderate</option>
-                      <option>Low</option>
-                    </select>
-                    <ChevronDown
-                      size={13}
-                      className="pointer-events-none absolute right-2 top-3 text-muted-foreground"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 overflow-x-auto">
-                <div className="feed-table min-w-[670px]">
-                  <div className="feed-row feed-head">
-                    <span>EVENT / SOURCE</span>
-                    <span>ASSET</span>
-                    <span>SENTIMENT</span>
-                    <span>IMPACT</span>
-                    <span>SEVERITY</span>
-                    <span></span>
-                  </div>
-                  {shownEvents
-                    .filter((e) => view !== "Alerts" || severityRank[e.severity] >= 3)
-                    .map((event) => (
-                      <Button
-                        variant="ghost"
-                        key={event.id}
-                        className={`feed-row feed-entry ${selected?.id === event.id ? "feed-selected" : ""}`}
-                        onClick={() => setSelected(event)}
-                      >
-                        <span className="min-w-0 text-left">
-                          <span className="block truncate text-xs font-medium">
-                            {event.headline}
-                          </span>
-                          <span className="mt-2 block text-[10px] text-muted-foreground">
-                            {event.source} <span className="mx-1">·</span> {event.time}
-                          </span>
-                        </span>
-                        <span className="text-left">
-                          <span className="block text-xs font-semibold">{event.ticker}</span>
-                          <span className="mt-1 block truncate text-[10px] text-muted-foreground">
-                            {event.company}
-                          </span>
-                        </span>
-                        <span
-                          className={`text-left text-xs tabular-nums ${event.sentiment < 0 ? "text-destructive" : "text-primary"}`}
-                        >
-                          {event.sentiment > 0 ? "+" : ""}
-                          {event.sentiment.toFixed(2)}
-                        </span>
-                        <span className="text-left text-xs tabular-nums">
-                          {event.impact}
-                          <span className="text-muted-foreground">/10</span>
-                        </span>
-                        <span className={`severity severity-${event.severity.toLowerCase()}`}>
-                          {event.severity}
-                        </span>
-                        <ArrowRight size={15} className="text-muted-foreground" />
-                      </Button>
-                    ))}
-                  {shownEvents.length === 0 && (
-                    <div className="py-12 text-center text-sm text-muted-foreground">
-                      No signals match your search.
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{shownEvents.length} signals shown</span>
-                <span>Updates every few seconds</span>
-              </div>
-            </section>
-          )}
+
           <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 pb-7 text-[11px] text-muted-foreground">
             <span>
-              © TRADING WENS ·{" "}
-              {showingLiveMarket
-                ? "DATA PROVIDED BY ALPACA"
-                : showingLiveNews
-                  ? "NEWS PROVIDED BY GDELT"
-                  : "MARKET SIMULATION"}
+              © TRADING WENS · {isProviderView ? "ALPACA PAPER TRADING" : "SIMULATED MONITORING"}
             </span>
-            <span>For demonstration only. Not financial advice.</span>
+            <span>Research interface only. Not financial advice.</span>
           </footer>
         </main>
       </div>
@@ -750,4 +320,156 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
       )}
     </div>
   );
+}
+
+function MonitoringSignals({
+  events,
+  alertOnly,
+  onSelect,
+}: {
+  events: RiskEvent[];
+  alertOnly: boolean;
+  onSelect: (event: RiskEvent) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All events");
+  const shown = useMemo(
+    () =>
+      events.filter(
+        (event) =>
+          `${event.ticker} ${event.company} ${event.headline}`
+            .toLowerCase()
+            .includes(search.toLowerCase()) &&
+          (filter === "All events" || event.severity === filter) &&
+          (!alertOnly || severityRank[event.severity] >= 3),
+      ),
+    [events, search, filter, alertOnly],
+  );
+  return (
+    <section className="panel">
+      <div className="panel-heading flex-wrap gap-4">
+        <div>
+          <div className="label text-primary">SIMULATED MONITORING</div>
+          <h2 className="mt-2 text-lg font-semibold">
+            {alertOnly ? "Priority alerts" : "AI risk signals"}
+          </h2>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Illustrative signals remain separate from live Alpaca account data.
+          </p>
+        </div>
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:w-52">
+            <Search size={15} className="absolute left-3 top-3 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search signals"
+              aria-label="Search signals"
+              className="h-10 pl-9 text-xs"
+            />
+          </div>
+          <div className="relative">
+            <SlidersHorizontal
+              size={14}
+              className="pointer-events-none absolute left-3 top-3 text-muted-foreground"
+            />
+            <select
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              aria-label="Filter severity"
+              className="h-10 rounded-md border border-border bg-secondary/40 pl-9 pr-3 text-xs"
+            >
+              <option>All events</option>
+              <option>Critical</option>
+              <option>High</option>
+              <option>Moderate</option>
+              <option>Low</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 overflow-x-auto">
+        <div className="feed-table min-w-[670px]">
+          <div className="feed-row feed-head">
+            <span>EVENT / SOURCE</span>
+            <span>ASSET</span>
+            <span>SENTIMENT</span>
+            <span>IMPACT</span>
+            <span>SEVERITY</span>
+            <span />
+          </div>
+          {shown.map((event) => (
+            <Button
+              variant="ghost"
+              key={event.id}
+              className="feed-row feed-entry"
+              onClick={() => onSelect(event)}
+            >
+              <span className="min-w-0 text-left">
+                <span className="block truncate text-xs font-medium">{event.headline}</span>
+                <span className="mt-2 block text-[10px] text-muted-foreground">
+                  {event.source} · {event.time}
+                </span>
+              </span>
+              <span className="text-left">
+                <span className="block text-xs font-semibold">{event.ticker}</span>
+                <span className="mt-1 block truncate text-[10px] text-muted-foreground">
+                  {event.company}
+                </span>
+              </span>
+              <span
+                className={
+                  event.sentiment < 0
+                    ? "text-left text-xs text-destructive"
+                    : "text-left text-xs text-primary"
+                }
+              >
+                {event.sentiment > 0 ? "+" : ""}
+                {event.sentiment.toFixed(2)}
+              </span>
+              <span className="text-left text-xs">{event.impact}/10</span>
+              <span className={`severity severity-${event.severity.toLowerCase()}`}>
+                {event.severity}
+              </span>
+              <ArrowRight size={14} />
+            </Button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DemoLocked() {
+  return (
+    <section className="panel flex min-h-80 flex-col items-center justify-center text-center">
+      <ShieldAlert size={30} className="text-primary" />
+      <h2 className="mt-4 text-xl font-semibold">Sign in for live account data</h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">
+        Portfolio, risk, market data, and paper trading require an authenticated workspace.
+      </p>
+      <Button asChild className="mt-5">
+        <Link to="/auth">
+          Sign in <ArrowRight size={14} />
+        </Link>
+      </Button>
+    </section>
+  );
+}
+
+function viewDescription(view: string) {
+  switch (view) {
+    case "Overview":
+      return "Your invested stocks, focused market watchlist, sentiment context, and account-relevant news.";
+    case "Live risk feed":
+      return "Current position risk, calculation confidence, exposure, and review actions.";
+    case "Portfolio status":
+      return "Overall and individual risk calculated from real Alpaca paper-account positions.";
+    case "Live Trading":
+      return "Search tradable stocks, inspect live candlesticks, and submit confirmed paper orders.";
+    case "Alerts":
+      return "Priority simulated monitoring alerts.";
+    default:
+      return "Simulated AI monitoring signals for interface development.";
+  }
 }

@@ -21,6 +21,9 @@ The frontend development server proxies `/api` to `http://127.0.0.1:8080`. Deplo
 - `GET /api/v1/market/snapshots` (authenticated)
 - `GET /api/v1/market/stocks/{symbol}/history?range=1D|5D|1M` (authenticated)
 - `GET /api/v1/news?symbol={symbol}` (authenticated, symbol optional)
+- `GET /api/v1/trading/portfolio` (authenticated, Alpaca paper account)
+- `GET /api/v1/trading/assets?search={query}` (authenticated, active tradable equities)
+- `POST /api/v1/trading/orders` (authenticated, confirmed paper orders only)
 - `GET /health`
 
 The versioned interface is documented in `../docs/api-v1.yaml`.

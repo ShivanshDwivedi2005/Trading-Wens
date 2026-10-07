@@ -463,6 +463,223 @@ h3,
 .market-entry:hover {
   background: color-mix(in oklab, var(--primary) 6%, transparent);
 }
+.overview-stock-grid,
+.portfolio-position-grid {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--border);
+}
+.overview-stock,
+.position-risk-card {
+  min-width: 0;
+  background: var(--card);
+  padding: 16px;
+}
+.position-tag,
+.watch-tag {
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.position-tag {
+  border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+  color: var(--primary);
+}
+.watch-tag {
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
+}
+.overview-columns {
+  display: grid;
+  gap: 16px;
+}
+.sentiment-rank {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 9px 4px;
+}
+.rank-number {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.risk-table {
+  display: grid;
+}
+.risk-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.3fr) 115px 80px 130px 90px minmax(180px, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+.risk-head {
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px 12px;
+  color: var(--muted-foreground);
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.risk-entry {
+  min-height: 68px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.risk-entry small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted-foreground);
+  font-size: 9px;
+}
+.risk-badge {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.risk-low {
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+.risk-moderate {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+.risk-high {
+  color: var(--destructive);
+  background: color-mix(in oklab, var(--destructive) 8%, transparent);
+}
+.portfolio-risk-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--card) 82%, transparent);
+  padding: 24px;
+}
+.trading-layout {
+  display: grid;
+  gap: 16px;
+}
+.asset-browser,
+.order-panel {
+  align-self: start;
+}
+.asset-list {
+  max-height: 540px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.asset-row {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 9px 10px;
+  transition: background 0.18s ease;
+}
+.asset-row:hover,
+.asset-row-active {
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+.asset-row-active {
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+.asset-row strong,
+.asset-row small {
+  display: block;
+}
+.asset-row strong {
+  font-size: 11px;
+}
+.asset-row small {
+  max-width: 150px;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paper-notice {
+  border: 1px solid color-mix(in oklab, var(--primary) 42%, transparent);
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  padding: 8px 10px;
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.order-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.order-select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 0 12px;
+  color: var(--foreground);
+  font-size: 13px;
+}
+.order-select option {
+  background: var(--popover);
+}
+.candlestick-wrap {
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--background) 70%, transparent);
+  padding: 8px;
+}
+.candlestick-wrap g:focus {
+  outline: none;
+}
+.candlestick-wrap g:focus line,
+.candlestick-wrap g:focus rect {
+  filter: drop-shadow(0 0 3px var(--primary));
+}
+.trading-insight-grid {
+  display: grid;
+  gap: 28px;
+}
 .stock-header {
   position: sticky;
   top: 0;
@@ -660,6 +877,10 @@ h3,
   .news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .overview-stock-grid,
+  .portfolio-position-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .panel {
     padding: 24px;
   }
@@ -686,6 +907,19 @@ h3,
   }
   .analysis-grid {
     grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.75fr);
+  }
+  .overview-stock-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .overview-columns,
+  .trading-insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .portfolio-position-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .trading-layout {
+    grid-template-columns: minmax(210px, 0.3fr) minmax(0, 1fr) minmax(240px, 0.34fr);
   }
   .stock-header {
     padding: 12px 38px;

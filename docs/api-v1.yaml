@@ -13,7 +13,7 @@ paths:
           name: symbol
           schema:
             type: string
-          description: Optional supported watchlist symbol for a focused company query
+          description: Optional valid stock ticker for a focused company query
       security:
         - bearerAuth: []
       responses:
@@ -29,7 +29,7 @@ paths:
           description: Authentication or news provider unavailable
   /api/v1/market/stocks/{symbol}/history:
     get:
-      summary: Get recent Alpaca bars for one supported stock
+      summary: Get recent Alpaca bars for one valid stock ticker
       security:
         - bearerAuth: []
       parameters:
@@ -56,7 +56,7 @@ paths:
         "401":
           description: Missing, expired, or invalid Supabase access token
         "404":
-          description: Symbol is outside the maintained market universe
+          description: Symbol format is invalid
         "502":
           description: Authentication or market-data provider unavailable
   /api/v1/market/snapshots:
@@ -75,6 +75,67 @@ paths:
           description: Missing, expired, or invalid Supabase access token
         "502":
           description: Authentication or market-data provider unavailable
+  /api/v1/trading/portfolio:
+    get:
+      summary: Get the configured Alpaca paper account and open positions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current paper-account portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "502":
+          description: Alpaca paper-trading service unavailable
+  /api/v1/trading/assets:
+    get:
+      summary: Search active tradable US equities
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Up to 100 matching assets from the Alpaca catalogue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradingAssetsResponse"
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "502":
+          description: Alpaca paper-trading service unavailable
+  /api/v1/trading/orders:
+    post:
+      summary: Submit a market or limit order to the Alpaca paper account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+      responses:
+        "201":
+          description: Paper order accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          description: Missing, expired, or invalid Supabase access token
+        "422":
+          description: Invalid order input
+        "502":
+          description: Alpaca paper-trading service unavailable
 components:
   securitySchemes:
     bearerAuth:
@@ -82,6 +143,104 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Portfolio:
+      type: object
+      required: [account, positions, as_of, source, mode]
+      properties:
+        account:
+          $ref: "#/components/schemas/TradingAccount"
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Position"
+        as_of:
+          type: string
+          format: date-time
+        source:
+          type: string
+          const: alpaca
+        mode:
+          type: string
+          const: paper
+    TradingAccount:
+      type: object
+      required: [id, status, currency, cash, buying_power, portfolio_value, equity, last_equity, long_market_value, trading_blocked, pattern_day_trader]
+      properties:
+        id: { type: string }
+        status: { type: string }
+        currency: { type: string }
+        cash: { type: number }
+        buying_power: { type: number }
+        portfolio_value: { type: number }
+        equity: { type: number }
+        last_equity: { type: number }
+        long_market_value: { type: number }
+        trading_blocked: { type: boolean }
+        pattern_day_trader: { type: boolean }
+    Position:
+      type: object
+      required: [symbol, asset_id, side, quantity, average_entry_price, current_price, market_value, cost_basis, unrealized_pl, unrealized_pl_percent, change_today]
+      properties:
+        symbol: { type: string }
+        asset_id: { type: string }
+        side: { type: string }
+        quantity: { type: number }
+        average_entry_price: { type: number }
+        current_price: { type: number }
+        market_value: { type: number }
+        cost_basis: { type: number }
+        unrealized_pl: { type: number }
+        unrealized_pl_percent: { type: number }
+        change_today: { type: number }
+    TradingAssetsResponse:
+      type: object
+      required: [data, count, source, mode]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradingAsset"
+        count: { type: integer, minimum: 0 }
+        source: { type: string, const: alpaca }
+        mode: { type: string, const: paper }
+    TradingAsset:
+      type: object
+      required: [id, symbol, name, exchange, asset_class, status, tradable, fractionable]
+      properties:
+        id: { type: string }
+        symbol: { type: string }
+        name: { type: string }
+        exchange: { type: string }
+        asset_class: { type: string }
+        status: { type: string }
+        tradable: { type: boolean }
+        fractionable: { type: boolean }
+    OrderRequest:
+      type: object
+      required: [symbol, quantity, side, type, time_in_force]
+      properties:
+        symbol: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        side: { type: string, enum: [buy, sell] }
+        type: { type: string, enum: [market, limit] }
+        limit_price: { type: number, exclusiveMinimum: 0 }
+        time_in_force: { type: string, const: day }
+    Order:
+      type: object
+      required: [id, client_order_id, symbol, quantity, filled_quantity, side, type, time_in_force, status, submitted_at, mode]
+      properties:
+        id: { type: string }
+        client_order_id: { type: string }
+        symbol: { type: string }
+        quantity: { type: number }
+        filled_quantity: { type: number }
+        side: { type: string }
+        type: { type: string }
+        time_in_force: { type: string }
+        status: { type: string }
+        limit_price: { type: number }
+        submitted_at: { type: string, format: date-time }
+        mode: { type: string, const: paper }
     NewsFeedResponse:
       type: object
       required: [data, as_of, source, count]

@@ -46,4 +46,4 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 
-The authenticated market overview uses Alpaca data for all 30 tracked stocks. Selecting a stock opens its live quote, Alpaca price history, and a focused GDELT news feed. Market news also has a dedicated workspace tab. Sentiment shown beside stock news is intentionally labelled as a placeholder until the model is connected.
+The authenticated workspace uses the configured Alpaca paper account for its overview, position-risk feed, portfolio-risk status, searchable asset list, live candlesticks, and confirmed paper orders. GDELT supplies current company coverage. Headline sentiment is intentionally labelled as a temporary keyword heuristic until the trained model is connected; simulated monitoring stays visibly separated from provider data.
