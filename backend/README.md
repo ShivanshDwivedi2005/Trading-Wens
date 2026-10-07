@@ -19,7 +19,8 @@ The frontend development server proxies `/api` to `http://127.0.0.1:8080`. Deplo
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/signup`
 - `GET /api/v1/market/snapshots` (authenticated)
-- `GET /api/v1/news` (authenticated)
+- `GET /api/v1/market/stocks/{symbol}/history?range=1D|5D|1M` (authenticated)
+- `GET /api/v1/news?symbol={symbol}` (authenticated, symbol optional)
 - `GET /health`
 
 The versioned interface is documented in `../docs/api-v1.yaml`.

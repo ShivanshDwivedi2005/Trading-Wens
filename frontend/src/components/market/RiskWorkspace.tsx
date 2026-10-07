@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Newspaper,
   Search,
   ShieldAlert,
   SlidersHorizontal,
@@ -53,6 +54,7 @@ const navItems = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Live risk feed", icon: Activity },
   { label: "Market overview", icon: ChartNoAxesCombined },
+  { label: "Market news", icon: Newspaper },
   { label: "Portfolio risk", icon: ShieldAlert },
   { label: "Stress testing", icon: TestTubeDiagonal },
   { label: "Historical analytics", icon: TrendingUp },
@@ -220,7 +222,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
     view === "AI Risk Signals" ||
     view === "Alerts";
   const showingLiveMarket = !demo && view === "Market overview";
-  const showingLiveNews = !demo && view === "Live risk feed";
+  const showingLiveNews = !demo && view === "Market news";
   const showingProviderData = showingLiveMarket || showingLiveNews;
   return (
     <div className="workspace min-h-screen bg-background text-foreground">

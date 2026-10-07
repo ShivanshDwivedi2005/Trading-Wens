@@ -27,7 +27,7 @@ export function parseNewsFeed(value: unknown): NewsFeedResponse {
   return newsFeedSchema.parse(value);
 }
 
-export async function fetchMarketNews(): Promise<NewsFeedResponse> {
+export async function fetchMarketNews(symbol?: string): Promise<NewsFeedResponse> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -36,7 +36,8 @@ export async function fetchMarketNews(): Promise<NewsFeedResponse> {
   }
 
   const configuredBaseURL = import.meta.env["VITE_API_BASE_URL"]?.trim() ?? "";
-  const response = await fetch(`${configuredBaseURL.replace(/\/$/, "")}/api/v1/news`, {
+  const params = symbol ? `?${new URLSearchParams({ symbol })}` : "";
+  const response = await fetch(`${configuredBaseURL.replace(/\/$/, "")}/api/v1/news${params}`, {
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${session.access_token}`,

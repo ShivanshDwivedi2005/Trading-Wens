@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw, Search, WifiOff } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, RefreshCw, Search, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchMarketSnapshots } from "@/lib/market-api";
@@ -92,6 +93,9 @@ export function MarketOverview() {
               <span role="columnheader">Open</span>
               <span role="columnheader">Day range</span>
               <span role="columnheader">Volume</span>
+              <span role="columnheader" className="sr-only">
+                Open stock
+              </span>
             </div>
             {isPending
               ? Array.from({ length: 8 }, (_, index) => (
@@ -104,7 +108,14 @@ export function MarketOverview() {
               : snapshots.map((snapshot) => {
                   const positive = snapshot.change >= 0;
                   return (
-                    <div className="market-row market-entry" role="row" key={snapshot.symbol}>
+                    <Link
+                      to="/stocks/$symbol"
+                      params={{ symbol: snapshot.symbol }}
+                      className="market-row market-entry group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      role="row"
+                      key={snapshot.symbol}
+                      aria-label={`Open ${snapshot.name} stock details`}
+                    >
                       <span role="cell" className="min-w-0">
                         <span className="block text-xs font-semibold">{snapshot.symbol}</span>
                         <span className="mt-1 block truncate text-[10px] text-muted-foreground">
@@ -133,7 +144,13 @@ export function MarketOverview() {
                       <span role="cell" className="text-xs tabular-nums text-muted-foreground">
                         {snapshot.volume > 0 ? volumeFormatter.format(snapshot.volume) : "—"}
                       </span>
-                    </div>
+                      <span role="cell" className="text-right text-muted-foreground">
+                        <ArrowRight
+                          size={15}
+                          className="transition-transform group-hover:translate-x-0.5"
+                        />
+                      </span>
+                    </Link>
                   );
                 })}
             {!isPending && snapshots.length === 0 && (

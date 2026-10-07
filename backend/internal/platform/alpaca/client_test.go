@@ -161,3 +161,32 @@ func TestHistoryRejectsUnknownSymbolAndRange(t *testing.T) {
 		t.Fatalf("expected unsupported range, got %v", err)
 	}
 }
+
+func TestHistoryOneDayKeepsLatestTradingSession(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"bars":[
+			{"t":"2026-10-05T19:55:00Z","o":248,"h":249,"l":247,"c":248.5,"v":100000},
+			{"t":"2026-10-06T15:30:00Z","o":250,"h":252,"l":249.5,"c":251.5,"v":125000},
+			{"t":"2026-10-06T15:35:00Z","o":251.5,"h":253,"l":251,"c":252.75,"v":140000}
+		]}`))
+	}))
+	defer server.Close()
+	client, err := NewClient(
+		server.URL,
+		"key-id",
+		"secret-key",
+		"iex",
+		[]domain.MarketSymbol{{Symbol: "AAPL", Name: "Apple"}},
+		server.Client(),
+	)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	history, err := client.History(context.Background(), "AAPL", "1D")
+	if err != nil {
+		t.Fatalf("fetch history: %v", err)
+	}
+	if history.Count != 2 || history.Data[0].Timestamp.Day() != 6 {
+		t.Fatalf("expected only the latest trading session, got %#v", history.Data)
+	}
+}

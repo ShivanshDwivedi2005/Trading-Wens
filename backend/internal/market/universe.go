@@ -36,12 +36,3 @@ var SP500TopThirty = []domain.MarketSymbol{
 	{Symbol: "IBM", Name: "IBM"},
 	{Symbol: "CVX", Name: "Chevron"},
 }
-
-func FindSymbol(value string) (domain.MarketSymbol, bool) {
-	for _, symbol := range SP500TopThirty {
-		if symbol.Symbol == value {
-			return symbol, true
-		}
-	}
-	return domain.MarketSymbol{}, false
-}

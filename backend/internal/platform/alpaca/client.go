@@ -204,6 +204,14 @@ func (c *Client) History(ctx context.Context, requestedSymbol, requestedRange st
 			Volume:    bar.Volume,
 		})
 	}
+	if historyRange == "1D" && len(bars) > 0 {
+		latestSession := bars[len(bars)-1].Timestamp.Format("2006-01-02")
+		firstBar := 0
+		for firstBar < len(bars) && bars[firstBar].Timestamp.Format("2006-01-02") != latestSession {
+			firstBar++
+		}
+		bars = bars[firstBar:]
+	}
 	asOf := now
 	if len(bars) > 0 {
 		asOf = bars[len(bars)-1].Timestamp

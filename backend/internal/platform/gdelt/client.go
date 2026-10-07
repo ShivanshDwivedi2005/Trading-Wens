@@ -26,8 +26,9 @@ type Client struct {
 	cacheTTL   time.Duration
 	symbols    []domain.MarketSymbol
 
-	mu    sync.Mutex
-	cache map[string]cachedFeed
+	mu            sync.Mutex
+	cache         map[string]cachedFeed
+	lastRequestAt time.Time
 }
 
 type cachedFeed struct {
@@ -74,6 +75,15 @@ func (c *Client) fetch(ctx context.Context, cacheKey, queryText, timespan, maxRe
 	if cached, ok := c.cache[cacheKey]; ok && time.Since(cached.cachedAt) < c.cacheTTL {
 		return cloneFeed(cached.value), nil
 	}
+	if wait := 5*time.Second - time.Since(c.lastRequestAt); !c.lastRequestAt.IsZero() && wait > 0 {
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return domain.NewsFeed{}, ctx.Err()
+		case <-timer.C:
+		}
+	}
 
 	endpoint, err := url.Parse(c.baseURL)
 	if err != nil {
@@ -96,6 +106,7 @@ func (c *Client) fetch(ctx context.Context, cacheKey, queryText, timespan, maxRe
 	req.Header.Set("User-Agent", "TradingWens/1.0")
 
 	res, err := c.httpClient.Do(req)
+	c.lastRequestAt = time.Now()
 	if err != nil {
 		return domain.NewsFeed{}, fmt.Errorf("fetch GDELT news: %w", err)
 	}

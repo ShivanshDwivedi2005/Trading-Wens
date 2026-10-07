@@ -10,7 +10,7 @@ export function NewsFeed() {
   const [search, setSearch] = useState("");
   const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ["news", "large-cap-market"],
-    queryFn: fetchMarketNews,
+    queryFn: () => fetchMarketNews(),
     staleTime: 120_000,
     refetchInterval: 120_000,
     retry: 1,

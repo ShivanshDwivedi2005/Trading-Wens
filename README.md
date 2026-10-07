@@ -1,15 +1,14 @@
 # Trading Wens
 
-Trading Wens is a market-intelligence platform for turning financial news and social-market conversations into explainable stock sentiment signals. The current interface uses clearly labelled simulation data while the ingestion and prediction services are being designed.
+Trading Wens is a market-intelligence platform for exploring live large-cap market data and current company coverage alongside clearly labelled simulated risk tooling.
 
 ## Repository layout
 
 ```text
 .
-├── backend/             # Go service boundary (structure only for now)
+├── backend/             # Go API and provider integrations
 ├── docs/                # Architecture notes and delivery roadmap
 ├── frontend/            # TanStack Start web application
-├── .cursor/rules/       # Repository-specific engineering guidance
 └── package.json         # Workspace commands
 ```
 
@@ -43,8 +42,8 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
 - Supabase authentication and PostgreSQL
-- Go backend with Supabase session validation and normalized Alpaca snapshots
+- Go backend with Supabase session validation, Alpaca snapshots and bars, and GDELT news
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 
-The authenticated market overview uses Alpaca data, and the live risk feed uses current GDELT coverage. Both are labelled separately from the simulated risk and sentiment features.
+The authenticated market overview uses Alpaca data for all 30 tracked stocks. Selecting a stock opens its live quote, Alpaca price history, and a focused GDELT news feed. Market news also has a dedicated workspace tab. Sentiment shown beside stock news is intentionally labelled as a placeholder until the model is connected.
