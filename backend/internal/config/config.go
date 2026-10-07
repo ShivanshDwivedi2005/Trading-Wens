@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,7 @@ func Load() (Config, error) {
 			"SUPABASE_PUBLISHABLE_KEY",
 		),
 		AlpacaDataURL:      strings.TrimRight(valueOrDefault("ALPACA_DATA_REST_URL", "https://data.alpaca.markets"), "/"),
-		AlpacaTradingURL:   strings.TrimRight(valueOrDefault("ALPACA_TRADING_REST_URL", "https://paper-api.alpaca.markets"), "/"),
+		AlpacaTradingURL:   valueOrDefault("ALPACA_TRADING_REST_URL", "https://paper-api.alpaca.markets"),
 		AlpacaAPIKeyID:     strings.TrimSpace(os.Getenv("ALPACA_API_KEY_ID")),
 		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
@@ -71,9 +72,11 @@ func Load() (Config, error) {
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {
 		return Config{}, errors.New("ALPACA_DATA_REST_URL must be an HTTP or HTTPS URL")
 	}
-	if cfg.AlpacaTradingURL != "https://paper-api.alpaca.markets" {
-		return Config{}, errors.New("ALPACA_TRADING_REST_URL must use the Alpaca paper trading endpoint")
+	normalizedTradingURL, err := normalizeAlpacaTradingURL(cfg.AlpacaTradingURL)
+	if err != nil {
+		return Config{}, err
 	}
+	cfg.AlpacaTradingURL = normalizedTradingURL
 	if !strings.HasPrefix(cfg.GDELTAPIURL, "https://") && !strings.HasPrefix(cfg.GDELTAPIURL, "http://") {
 		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
 	}
@@ -82,6 +85,18 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func normalizeAlpacaTradingURL(value string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Scheme != "https" || parsed.Host != "paper-api.alpaca.markets" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", errors.New("ALPACA_TRADING_REST_URL must use the Alpaca paper trading endpoint")
+	}
+	path := strings.TrimRight(parsed.EscapedPath(), "/")
+	if path != "" && path != "/v2" {
+		return "", errors.New("ALPACA_TRADING_REST_URL must use the Alpaca paper trading endpoint")
+	}
+	return "https://paper-api.alpaca.markets", nil
 }
 
 func valueOrDefault(name, fallback string) string {
