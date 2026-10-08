@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { headlineSentiment, portfolioRisk, positionRisk } from "./portfolio-risk";
+import { portfolioRisk, positionRisk } from "./portfolio-risk";
 import type { TradingPosition } from "./trading-api";
 
 const position: TradingPosition = {
@@ -29,10 +29,5 @@ describe("portfolio risk heuristics", () => {
     const result = portfolioRisk([position], 5000);
     expect(result.concentration).toBeCloseTo(38);
     expect(result.level).not.toBe("");
-  });
-
-  it("scores headline language deterministically", () => {
-    expect(headlineSentiment("Company beats estimates with strong growth")).toBeGreaterThan(0);
-    expect(headlineSentiment("Company misses estimates as losses rise")).toBeLessThan(0);
   });
 });

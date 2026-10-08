@@ -5,6 +5,7 @@ import { ExternalLink, Newspaper, RefreshCw, Search, WifiOff } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchMarketNews } from "@/lib/news-api";
+import { SentimentBadge } from "./SentimentBadge";
 
 export function NewsFeed() {
   const [search, setSearch] = useState("");
@@ -30,12 +31,12 @@ export function NewsFeed() {
       <div className="panel-heading flex-wrap gap-4">
         <div>
           <div className="label flex items-center gap-2 text-primary">
-            <Newspaper size={14} /> GDELT GLOBAL COVERAGE
+            <Newspaper size={14} /> MULTI-SOURCE COVERAGE
           </div>
           <h2 className="mt-2 text-lg font-semibold">Latest company news</h2>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-            Recent English-language coverage matched to the large-cap watchlist. Headlines are
-            provider data and are not risk scores or investment advice.
+            Recent English-language coverage matched to the large-cap watchlist and scored by the
+            trained Trading Wens financial sentiment model.
           </p>
         </div>
         <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -85,7 +86,9 @@ export function NewsFeed() {
             : articles.map((article) => (
                 <article className="news-card" key={article.id}>
                   <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                    <span className="uppercase tracking-wider">{article.domain}</span>
+                    <span className="uppercase tracking-wider">
+                      {article.provider} · {article.domain}
+                    </span>
                     <span aria-hidden="true">·</span>
                     <time dateTime={article.published_at}>
                       {formatDistanceToNowStrict(new Date(article.published_at), {
@@ -94,6 +97,9 @@ export function NewsFeed() {
                     </time>
                   </div>
                   <h3 className="mt-3 text-sm font-medium leading-6">{article.title}</h3>
+                  <div className="mt-3">
+                    <SentimentBadge sentiment={article.sentiment} />
+                  </div>
                   <div className="mt-5 flex items-end justify-between gap-3">
                     <div className="flex flex-wrap gap-1.5">
                       {article.matched_symbols.map((symbol) => (
@@ -123,7 +129,11 @@ export function NewsFeed() {
       )}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span>{data ? `${data.count} recent articles` : "Connecting to GDELT"}</span>
+        <span>
+          {data
+            ? `${data.count} recent articles · ${data.providers.join(" + ")}`
+            : "Connecting to news providers"}
+        </span>
         <span>
           {data ? `Feed checked ${new Date(data.as_of).toLocaleString()}` : "Waiting for news"}
         </span>

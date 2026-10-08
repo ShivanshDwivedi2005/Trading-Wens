@@ -142,7 +142,7 @@ export function AccountOverview() {
       <div className="overview-columns">
         <section className="panel">
           <SectionHeading
-            eyebrow="MODEL-PENDING HEADLINE HEURISTIC"
+            eyebrow="TRAINED FINBERT SENTIMENT"
             title="Top five sentiment watchlist"
             description="Ranked from real news headlines; research aid only, not an investment recommendation."
           />
@@ -158,7 +158,8 @@ export function AccountOverview() {
                     </span>
                   </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
-                    {item.articleCount} matched headlines · {item.confidence}% coverage confidence
+                    {item.analyzedCount} of {item.articleCount} headlines analyzed ·{" "}
+                    {item.confidence}% model confidence
                   </div>
                 </div>
                 <span className={item.score >= 0 ? "text-primary" : "text-destructive"}>
@@ -174,7 +175,7 @@ export function AccountOverview() {
           <SectionHeading
             eyebrow="ACCOUNT-RELEVANT COVERAGE"
             title="Latest position news"
-            description="The five newest GDELT headlines matched to current holdings."
+            description="The five newest Alpaca and GDELT headlines matched to current holdings."
           />
           <div className="mt-5 divide-y divide-border">
             {accountNews.map((article) => (

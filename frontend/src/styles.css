@@ -709,11 +709,14 @@ h3,
   background: color-mix(in oklab, var(--card) 82%, transparent);
   padding: 18px;
 }
-.sentiment-placeholder {
+.sentiment-badge {
   display: inline-flex;
+  max-width: 100%;
   min-height: 28px;
   align-items: center;
-  border: 1px dashed color-mix(in oklab, var(--accent) 58%, transparent);
+  gap: 5px;
+  white-space: nowrap;
+  border: 1px solid color-mix(in oklab, var(--accent) 58%, transparent);
   border-radius: 3px;
   background: color-mix(in oklab, var(--accent) 8%, transparent);
   padding: 4px 8px;
@@ -722,6 +725,22 @@ h3,
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+.sentiment-positive {
+  border-color: color-mix(in oklab, var(--primary) 42%, transparent);
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+  color: var(--primary);
+}
+.sentiment-negative {
+  border-color: color-mix(in oklab, var(--destructive) 48%, transparent);
+  background: color-mix(in oklab, var(--destructive) 8%, transparent);
+  color: var(--destructive);
+}
+.sentiment-neutral,
+.sentiment-unavailable {
+  border-color: var(--border);
+  background: var(--secondary);
+  color: var(--muted-foreground);
 }
 .news-grid {
   display: grid;

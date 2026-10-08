@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { fetchMarketSnapshots, fetchStockHistory, type StockHistoryRange } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
+import { SentimentBadge } from "./SentimentBadge";
 
 const ranges: StockHistoryRange[] = ["1D", "5D", "1M"];
 
@@ -321,12 +322,12 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
           <div className="panel-heading flex-wrap gap-4">
             <div>
               <div className="label flex items-center gap-2 text-primary">
-                <Newspaper size={14} /> LIVE GDELT COVERAGE
+                <Newspaper size={14} /> LIVE MULTI-SOURCE COVERAGE
               </div>
               <h2 className="mt-2 text-lg font-semibold">Latest {symbol} news</h2>
               <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-                Current English-language coverage from GDELT. Sentiment is a temporary placeholder
-                until the model is connected.
+                Current English-language coverage from configured providers, scored by the trained
+                Trading Wens financial sentiment model.
               </p>
             </div>
           </div>
@@ -353,7 +354,9 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
                 : newsQuery.data?.data.map((article) => (
                     <article className="news-card" key={article.id}>
                       <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                        <span className="uppercase tracking-wider">{article.domain}</span>
+                        <span className="uppercase tracking-wider">
+                          {article.provider} · {article.domain}
+                        </span>
                         <span aria-hidden="true">·</span>
                         <time dateTime={article.published_at}>
                           {formatDistanceToNowStrict(new Date(article.published_at), {
@@ -363,9 +366,7 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
                       </div>
                       <h3 className="mt-3 text-sm font-medium leading-6">{article.title}</h3>
                       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                        <span className="sentiment-placeholder">
-                          Placeholder sentiment · Neutral
-                        </span>
+                        <SentimentBadge sentiment={article.sentiment} />
                         <a
                           href={article.url}
                           target="_blank"
@@ -388,7 +389,9 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
 
           <div className="mt-5 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
             <span>
-              {newsQuery.data ? `${newsQuery.data.count} focused articles` : "Connecting to GDELT"}
+              {newsQuery.data
+                ? `${newsQuery.data.count} focused articles · ${newsQuery.data.providers.join(" + ")}`
+                : "Connecting to news providers"}
             </span>
             <span>
               {newsQuery.data
@@ -399,7 +402,7 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
         </section>
 
         <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 pb-7 text-[11px] text-muted-foreground">
-          <span>PRICE DATA BY ALPACA · NEWS BY GDELT</span>
+          <span>PRICE DATA BY ALPACA · NEWS BY ALPACA + GDELT · NLP BY TRADING WENS</span>
           <span>Market data may be delayed by feed entitlement. Not financial advice.</span>
         </footer>
       </main>

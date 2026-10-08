@@ -2,44 +2,6 @@ import type { MarketSnapshot } from "./market-api";
 import type { NewsArticle } from "./news-api";
 import type { TradingPosition } from "./trading-api";
 
-const positiveWords = [
-  "beat",
-  "beats",
-  "growth",
-  "gain",
-  "gains",
-  "record",
-  "upgrade",
-  "strong",
-  "surge",
-  "expands",
-  "rises",
-];
-
-const negativeWords = [
-  "miss",
-  "misses",
-  "decline",
-  "loss",
-  "cuts",
-  "downgrade",
-  "weak",
-  "falls",
-  "risk",
-  "probe",
-  "lawsuit",
-];
-
-export function headlineSentiment(title: string) {
-  const words = title.toLowerCase().split(/[^a-z]+/);
-  const raw = words.reduce(
-    (score, word) =>
-      score + (positiveWords.includes(word) ? 1 : 0) - (negativeWords.includes(word) ? 1 : 0),
-    0,
-  );
-  return Math.max(-1, Math.min(1, raw / 3));
-}
-
 export function positionRisk(position: TradingPosition, portfolioValue: number) {
   const weight = portfolioValue > 0 ? (Math.abs(position.market_value) / portfolioValue) * 100 : 0;
   const downside = Math.max(0, -position.change_today);
@@ -91,12 +53,23 @@ export function sentimentWatchlist(snapshots: MarketSnapshot[], articles: NewsAr
       const related = articles.filter((article) =>
         article.matched_symbols.includes(snapshot.symbol),
       );
-      const score = related.length
-        ? related.reduce((sum, article) => sum + headlineSentiment(article.title), 0) /
-          related.length
+      const analyzed = related.flatMap((article) => (article.sentiment ? [article.sentiment] : []));
+      const score = analyzed.length
+        ? analyzed.reduce((sum, sentiment) => sum + sentiment.score, 0) / analyzed.length
         : 0;
-      const confidence = Math.min(95, 35 + related.length * 12);
-      return { snapshot, score, confidence, articleCount: related.length };
+      const confidence = analyzed.length
+        ? Math.round(
+            (analyzed.reduce((sum, sentiment) => sum + sentiment.confidence, 0) / analyzed.length) *
+              100,
+          )
+        : 0;
+      return {
+        snapshot,
+        score,
+        confidence,
+        articleCount: related.length,
+        analyzedCount: analyzed.length,
+      };
     })
     .sort((a, b) => b.score - a.score || b.articleCount - a.articleCount)
     .slice(0, 5);

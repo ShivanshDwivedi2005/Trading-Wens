@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchStockHistory } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
-import { headlineSentiment } from "@/lib/portfolio-risk";
 import { fetchSocialPosts } from "@/lib/social-api";
 import {
   fetchTradingAssets,
@@ -94,17 +93,18 @@ export function LiveTrading() {
     : 0;
   const sentiment = useMemo(() => {
     const articles = news.data?.data ?? [];
-    const posts = social.data?.data ?? [];
-    const evidence = [
-      ...articles.map((article) => article.title),
-      ...posts.map((post) => post.text),
-    ];
-    const score = evidence.length
-      ? evidence.reduce((sum, text) => sum + headlineSentiment(text), 0) / evidence.length
+    const analyzed = articles.flatMap((article) => (article.sentiment ? [article.sentiment] : []));
+    const score = analyzed.length
+      ? analyzed.reduce((sum, result) => sum + result.score, 0) / analyzed.length
       : 0;
     return {
       score,
-      confidence: Math.min(95, 35 + evidence.length * 8),
+      confidence: analyzed.length
+        ? Math.round(
+            (analyzed.reduce((sum, result) => sum + result.confidence, 0) / analyzed.length) * 100,
+          )
+        : 0,
+      count: analyzed.length,
       action:
         score > 0.25
           ? "Research positive catalysts"
@@ -112,7 +112,7 @@ export function LiveTrading() {
             ? "Review downside risks"
             : "Wait for a stronger signal",
     };
-  }, [news.data, social.data]);
+  }, [news.data]);
 
   const orderInput: PaperOrderInput = {
     symbol: selected.symbol,
@@ -314,20 +314,19 @@ export function LiveTrading() {
       <section className="panel">
         <div className="trading-insight-grid">
           <div>
-            <div className="label text-primary">MODEL-PENDING TEXT HEURISTIC</div>
+            <div className="label text-primary">TRAINED FINBERT MODEL</div>
             <h2 className="mt-2 text-lg font-semibold">Sentiment and action context</h2>
             <div className="mt-5 flex flex-wrap gap-8">
               <Insight
                 label="Sentiment score"
                 value={`${sentiment.score >= 0 ? "+" : ""}${sentiment.score.toFixed(2)}`}
               />
-              <Insight label="Coverage confidence" value={`${sentiment.confidence}%`} />
+              <Insight label="Model confidence" value={`${sentiment.confidence}%`} />
               <Insight label="Best action" value={sentiment.action} />
             </div>
             <p className="mt-4 text-[10px] leading-4 text-muted-foreground">
-              Based on keyword scoring of current headlines
-              {social.data?.count ? " and X posts" : ""}. It is not a trained model or investment
-              advice.
+              Aggregated from {sentiment.count} model-scored news headlines. X posts remain separate
+              provider context and are not included in this score. This is not investment advice.
             </p>
           </div>
           <div>
