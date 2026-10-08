@@ -143,10 +143,11 @@ func (c *Client) fetch(ctx context.Context, cacheKey, queryText, timespan, maxRe
 	}
 
 	result := domain.NewsFeed{
-		Data:   articles,
-		AsOf:   time.Now().UTC(),
-		Source: "gdelt",
-		Count:  len(articles),
+		Data:      articles,
+		AsOf:      time.Now().UTC(),
+		Source:    "gdelt",
+		Providers: []string{"gdelt"},
+		Count:     len(articles),
 	}
 	c.cache[cacheKey] = cachedFeed{value: cloneFeed(result), cachedAt: result.AsOf}
 	return result, nil
@@ -195,6 +196,7 @@ func normalizeArticle(provider providerArticle, symbols []domain.MarketSymbol, f
 		Title:          title,
 		URL:            articleURL.String(),
 		Domain:         strings.TrimSpace(provider.Domain),
+		Provider:       "gdelt",
 		PublishedAt:    publishedAt,
 		Language:       strings.TrimSpace(provider.Language),
 		SourceCountry:  strings.TrimSpace(provider.SourceCountry),

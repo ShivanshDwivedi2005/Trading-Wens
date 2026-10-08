@@ -8,9 +8,11 @@ import (
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/config"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
+	newsservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/news"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/googleauth"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/nlp"
 	xprovider "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/x"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
@@ -61,7 +63,22 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	newsHandler := httpapi.NewNewsHandler(newsClient)
+	alpacaNewsClient, err := alpaca.NewNewsClient(
+		cfg.AlpacaDataURL,
+		cfg.AlpacaAPIKeyID,
+		cfg.AlpacaAPISecretKey,
+		market.SP500TopThirty,
+		nil,
+	)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	nlpClient, err := nlp.NewClient(cfg.NLPAPIURL, &http.Client{Timeout: cfg.NLPRequestTimeout})
+	if err != nil {
+		logger.Fatal(err)
+	}
+	newsService := newsservice.NewService([]newsservice.Provider{newsClient, alpacaNewsClient}, nlpClient)
+	newsHandler := httpapi.NewNewsHandler(newsService)
 	var socialService httpapi.SocialService
 	if cfg.XEnabled {
 		xClient, err := xprovider.NewClient(cfg.XAPIURL, cfg.XBearerToken, market.SP500TopThirty, nil)
@@ -116,7 +133,7 @@ func main() {
 		Handler:           httpapi.CORS(cfg.CORSAllowedOrigins, router),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      15 * time.Second,
+		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

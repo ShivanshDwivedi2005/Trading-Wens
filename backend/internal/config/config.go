@@ -26,6 +26,8 @@ type Config struct {
 	AlpacaAPISecretKey string
 	AlpacaDataFeed     string
 	GDELTAPIURL        string
+	NLPAPIURL          string
+	NLPRequestTimeout  time.Duration
 	XEnabled           bool
 	XAPIURL            string
 	XBearerToken       string
@@ -50,6 +52,7 @@ func Load() (Config, error) {
 		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
 		GDELTAPIURL:        strings.TrimRight(valueOrDefault("GDELT_API_URL", "https://api.gdeltproject.org/api/v2/doc/doc"), "/"),
+		NLPAPIURL:          strings.TrimRight(valueOrDefault("NLP_API_URL", "http://127.0.0.1:8090"), "/"),
 		XAPIURL:            strings.TrimRight(valueOrDefault("X_API_URL", "https://api.x.com"), "/"),
 		XBearerToken:       strings.TrimSpace(os.Getenv("X_BEARER_TOKEN")),
 		CORSAllowedOrigins: splitList(valueOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
@@ -98,6 +101,9 @@ func Load() (Config, error) {
 	if !strings.HasPrefix(cfg.GDELTAPIURL, "https://") && !strings.HasPrefix(cfg.GDELTAPIURL, "http://") {
 		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
 	}
+	if !validHTTPURL(cfg.NLPAPIURL) {
+		return Config{}, errors.New("NLP_API_URL must be an HTTP or HTTPS URL")
+	}
 	if !validHTTPURL(cfg.XAPIURL) {
 		return Config{}, errors.New("X_API_URL must be an HTTP or HTTPS URL")
 	}
@@ -117,6 +123,11 @@ func Load() (Config, error) {
 		return Config{}, errors.New("AUTH_SESSION_TTL_SECONDS must be between 300 and 604800")
 	}
 	cfg.SessionTTL = time.Duration(sessionTTLSeconds) * time.Second
+	nlpTimeoutSeconds, err := strconv.Atoi(valueOrDefault("NLP_REQUEST_TIMEOUT_SECONDS", "20"))
+	if err != nil || nlpTimeoutSeconds < 1 || nlpTimeoutSeconds > 120 {
+		return Config{}, errors.New("NLP_REQUEST_TIMEOUT_SECONDS must be between 1 and 120")
+	}
+	cfg.NLPRequestTimeout = time.Duration(nlpTimeoutSeconds) * time.Second
 
 	return cfg, nil
 }

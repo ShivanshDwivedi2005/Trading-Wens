@@ -28,6 +28,13 @@ coverage
 playwright-report
 test-results
 
+# Local model artifacts and Python caches
+ml/models/
+*.onnx
+*.safetensors
+__pycache__/
+*.pyc
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
