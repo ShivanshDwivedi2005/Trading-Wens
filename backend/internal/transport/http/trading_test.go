@@ -14,6 +14,8 @@ type tradingServiceStub struct {
 	portfolio func(context.Context) (domain.Portfolio, error)
 	assets    func(context.Context, string) ([]domain.TradingAsset, error)
 	order     func(context.Context, domain.OrderRequest) (domain.Order, error)
+	monitor   func(context.Context) (domain.OrderMonitor, error)
+	cancel    func(context.Context, string) error
 }
 
 func (s tradingServiceStub) Portfolio(ctx context.Context) (domain.Portfolio, error) {
@@ -28,6 +30,14 @@ func (s tradingServiceStub) SubmitOrder(ctx context.Context, request domain.Orde
 	return s.order(ctx, request)
 }
 
+func (s tradingServiceStub) OrderMonitor(ctx context.Context) (domain.OrderMonitor, error) {
+	return s.monitor(ctx)
+}
+
+func (s tradingServiceStub) CancelOrder(ctx context.Context, orderID string) error {
+	return s.cancel(ctx, orderID)
+}
+
 func TestTradingHandlerPortfolioAndAssets(t *testing.T) {
 	handler := NewTradingHandler(tradingServiceStub{
 		portfolio: func(context.Context) (domain.Portfolio, error) {
@@ -40,6 +50,10 @@ func TestTradingHandlerPortfolioAndAssets(t *testing.T) {
 			return []domain.TradingAsset{{Symbol: "AAPL", Tradable: true}}, nil
 		},
 		order: func(context.Context, domain.OrderRequest) (domain.Order, error) { return domain.Order{}, nil },
+		monitor: func(context.Context) (domain.OrderMonitor, error) {
+			return domain.OrderMonitor{Mode: "paper", Source: "alpaca"}, nil
+		},
+		cancel: func(context.Context, string) error { return nil },
 	})
 	portfolioResponse := httptest.NewRecorder()
 	handler.Portfolio(portfolioResponse, httptest.NewRequest(http.MethodGet, "/api/v1/trading/portfolio", nil))
@@ -63,6 +77,8 @@ func TestTradingHandlerValidatesAndSubmitsPaperOrder(t *testing.T) {
 			}
 			return domain.Order{ID: "order-1", Mode: "paper"}, nil
 		},
+		monitor: func(context.Context) (domain.OrderMonitor, error) { return domain.OrderMonitor{}, nil },
+		cancel:  func(context.Context, string) error { return nil },
 	})
 	body := bytes.NewBufferString(`{"symbol":"aapl","quantity":2,"side":"buy","type":"market","time_in_force":"day"}`)
 	response := httptest.NewRecorder()
@@ -75,5 +91,35 @@ func TestTradingHandlerValidatesAndSubmitsPaperOrder(t *testing.T) {
 	handler.SubmitOrder(invalid, httptest.NewRequest(http.MethodPost, "/api/v1/trading/orders", bytes.NewBufferString(`{"symbol":"AAPL","quantity":0,"side":"buy","type":"market","time_in_force":"day"}`)))
 	if invalid.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("expected 422, got %d", invalid.Code)
+	}
+}
+
+func TestTradingHandlerListsAndCancelsOrders(t *testing.T) {
+	canceled := ""
+	handler := NewTradingHandler(tradingServiceStub{
+		portfolio: func(context.Context) (domain.Portfolio, error) { return domain.Portfolio{}, nil },
+		assets:    func(context.Context, string) ([]domain.TradingAsset, error) { return nil, nil },
+		order:     func(context.Context, domain.OrderRequest) (domain.Order, error) { return domain.Order{}, nil },
+		monitor: func(context.Context) (domain.OrderMonitor, error) {
+			return domain.OrderMonitor{Orders: []domain.Order{{ID: "order-123", Working: true}}, WorkingCount: 1, Mode: "paper", Source: "alpaca"}, nil
+		},
+		cancel: func(_ context.Context, orderID string) error {
+			canceled = orderID
+			return nil
+		},
+	})
+
+	monitorResponse := httptest.NewRecorder()
+	handler.Orders(monitorResponse, httptest.NewRequest(http.MethodGet, "/api/v1/trading/orders", nil))
+	if monitorResponse.Code != http.StatusOK || monitorResponse.Header().Get("Cache-Control") != "private, no-cache" {
+		t.Fatalf("unexpected monitor response: %d %#v", monitorResponse.Code, monitorResponse.Header())
+	}
+
+	cancelRequest := httptest.NewRequest(http.MethodDelete, "/api/v1/trading/orders/order-123", nil)
+	cancelRequest.SetPathValue("orderID", "order-123")
+	cancelResponse := httptest.NewRecorder()
+	handler.OrderActions(cancelResponse, cancelRequest)
+	if cancelResponse.Code != http.StatusNoContent || canceled != "order-123" {
+		t.Fatalf("unexpected cancel response: status=%d order=%s", cancelResponse.Code, canceled)
 	}
 }

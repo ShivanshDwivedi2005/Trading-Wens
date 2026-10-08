@@ -17,6 +17,49 @@ type TradingService interface {
 	Portfolio(ctx context.Context) (domain.Portfolio, error)
 	Assets(ctx context.Context, search string) ([]domain.TradingAsset, error)
 	SubmitOrder(ctx context.Context, request domain.OrderRequest) (domain.Order, error)
+	OrderMonitor(ctx context.Context) (domain.OrderMonitor, error)
+	CancelOrder(ctx context.Context, orderID string) error
+}
+
+func (h *TradingHandler) Orders(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.OrderMonitor(w, r)
+	case http.MethodPost:
+		h.SubmitOrder(w, r)
+	default:
+		w.Header().Set("Allow", http.MethodGet+", "+http.MethodPost)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET and POST are allowed")
+	}
+}
+
+func (h *TradingHandler) OrderMonitor(w http.ResponseWriter, r *http.Request) {
+	monitor, err := h.service.OrderMonitor(r.Context())
+	if err != nil {
+		writeTradingError(w, err, "Order activity is temporarily unavailable")
+		return
+	}
+	w.Header().Set("Cache-Control", "private, no-cache")
+	writeJSON(w, http.StatusOK, monitor)
+}
+
+func (h *TradingHandler) OrderActions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		w.Header().Set("Allow", http.MethodDelete)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only DELETE is allowed")
+		return
+	}
+	orderID := strings.TrimSpace(r.PathValue("orderID"))
+	if !validOrderID(orderID) {
+		writeError(w, http.StatusUnprocessableEntity, "invalid_order_id", "Enter a valid order ID")
+		return
+	}
+	if err := h.service.CancelOrder(r.Context(), orderID); err != nil {
+		writeTradingError(w, err, "Paper order could not be canceled")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type TradingHandler struct {
@@ -119,4 +162,17 @@ func writeTradingError(w http.ResponseWriter, err error, fallback string) {
 		return
 	}
 	writeError(w, http.StatusBadGateway, "trading_unavailable", fallback)
+}
+
+func validOrderID(value string) bool {
+	if len(value) < 8 || len(value) > 64 {
+		return false
+	}
+	for _, character := range value {
+		if character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' || character >= '0' && character <= '9' || character == '-' {
+			continue
+		}
+		return false
+	}
+	return true
 }

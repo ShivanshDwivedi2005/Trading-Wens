@@ -59,16 +59,65 @@ type OrderRequest struct {
 }
 
 type Order struct {
+	ID                 string     `json:"id"`
+	ClientOrderID      string     `json:"client_order_id"`
+	Symbol             string     `json:"symbol"`
+	Quantity           float64    `json:"quantity"`
+	FilledQuantity     float64    `json:"filled_quantity"`
+	FilledAveragePrice float64    `json:"filled_average_price,omitempty"`
+	Side               string     `json:"side"`
+	Type               string     `json:"type"`
+	TimeInForce        string     `json:"time_in_force"`
+	Status             string     `json:"status"`
+	LimitPrice         float64    `json:"limit_price,omitempty"`
+	SubmittedAt        time.Time  `json:"submitted_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
+	FilledAt           *time.Time `json:"filled_at,omitempty"`
+	CanceledAt         *time.Time `json:"canceled_at,omitempty"`
+	ExpiredAt          *time.Time `json:"expired_at,omitempty"`
+	FailedAt           *time.Time `json:"failed_at,omitempty"`
+	Working            bool       `json:"working"`
+	Mode               string     `json:"mode"`
+}
+
+type Fill struct {
+	ID              string    `json:"id"`
+	OrderID         string    `json:"order_id"`
+	Symbol          string    `json:"symbol"`
+	Side            string    `json:"side"`
+	Quantity        float64   `json:"quantity"`
+	CumulativeQty   float64   `json:"cumulative_quantity"`
+	LeavesQty       float64   `json:"leaves_quantity"`
+	Price           float64   `json:"price"`
+	Type            string    `json:"type"`
+	TransactionTime time.Time `json:"transaction_time"`
+	Source          string    `json:"source"`
+	Mode            string    `json:"mode"`
+}
+
+type OrderAuditEvent struct {
 	ID             string    `json:"id"`
-	ClientOrderID  string    `json:"client_order_id"`
+	OrderID        string    `json:"order_id"`
 	Symbol         string    `json:"symbol"`
+	Timestamp      time.Time `json:"timestamp"`
+	Event          string    `json:"event"`
+	Status         string    `json:"status"`
+	Side           string    `json:"side"`
 	Quantity       float64   `json:"quantity"`
 	FilledQuantity float64   `json:"filled_quantity"`
-	Side           string    `json:"side"`
-	Type           string    `json:"type"`
-	TimeInForce    string    `json:"time_in_force"`
-	Status         string    `json:"status"`
-	LimitPrice     float64   `json:"limit_price,omitempty"`
-	SubmittedAt    time.Time `json:"submitted_at"`
-	Mode           string    `json:"mode"`
+	Price          float64   `json:"price,omitempty"`
+	Message        string    `json:"message"`
+	Source         string    `json:"source"`
+}
+
+type OrderMonitor struct {
+	Orders       []Order           `json:"orders"`
+	Fills        []Fill            `json:"fills"`
+	AuditTrail   []OrderAuditEvent `json:"audit_trail"`
+	AsOf         time.Time         `json:"as_of"`
+	Source       string            `json:"source"`
+	Mode         string            `json:"mode"`
+	OrderCount   int               `json:"order_count"`
+	WorkingCount int               `json:"working_count"`
+	FillCount    int               `json:"fill_count"`
 }

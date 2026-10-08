@@ -120,7 +120,11 @@ func main() {
 	)
 	router.Handle(
 		"/api/v1/trading/orders",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.SubmitOrder)),
+		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Orders)),
+	)
+	router.Handle(
+		"/api/v1/trading/orders/{orderID}",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.OrderActions)),
 	)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
