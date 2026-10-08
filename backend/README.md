@@ -26,7 +26,9 @@ The frontend development server proxies `/api` to `http://127.0.0.1:8080`. Deplo
 - `GET /api/v1/social?symbol={symbol}` (authenticated, X recent search)
 - `GET /api/v1/trading/portfolio` (authenticated, Alpaca paper account)
 - `GET /api/v1/trading/assets?search={query}` (authenticated, active tradable equities)
+- `GET /api/v1/trading/orders` (authenticated, paper orders, fills, and audit trail)
 - `POST /api/v1/trading/orders` (authenticated, confirmed paper orders only)
+- `DELETE /api/v1/trading/orders/{orderID}` (authenticated, confirmed working-order cancellation)
 - `GET /health`
 
 The versioned interface is documented in `../docs/api-v1.yaml`.

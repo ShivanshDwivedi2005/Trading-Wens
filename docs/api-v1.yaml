@@ -176,6 +176,21 @@ paths:
         "502":
           description: Alpaca paper-trading service unavailable
   /api/v1/trading/orders:
+    get:
+      summary: Get Alpaca paper orders, fills, and the normalized execution audit trail
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Recent order lifecycle and execution activity for the configured paper account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderMonitor"
+        "401":
+          description: Missing, expired, or invalid Google-backed application session
+        "502":
+          description: Alpaca paper-trading service unavailable
     post:
       summary: Submit a market or limit order to the Alpaca paper account
       security:
@@ -197,6 +212,26 @@ paths:
           description: Missing, expired, or invalid Google-backed application session
         "422":
           description: Invalid order input
+        "502":
+          description: Alpaca paper-trading service unavailable
+  /api/v1/trading/orders/{orderID}:
+    delete:
+      summary: Cancel one working Alpaca paper order
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: orderID
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Cancellation request accepted
+        "401":
+          description: Missing, expired, or invalid Google-backed application session
+        "422":
+          description: Invalid or no-longer-cancelable order
         "502":
           description: Alpaca paper-trading service unavailable
 components:
@@ -347,6 +382,8 @@ components:
           symbol,
           quantity,
           filled_quantity,
+          updated_at,
+          working,
           side,
           type,
           time_in_force,
@@ -360,13 +397,112 @@ components:
         symbol: { type: string }
         quantity: { type: number }
         filled_quantity: { type: number }
+        filled_average_price: { type: number }
         side: { type: string }
         type: { type: string }
         time_in_force: { type: string }
         status: { type: string }
         limit_price: { type: number }
         submitted_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        filled_at: { type: string, format: date-time }
+        canceled_at: { type: string, format: date-time }
+        expired_at: { type: string, format: date-time }
+        failed_at: { type: string, format: date-time }
+        working: { type: boolean }
         mode: { type: string, const: paper }
+    OrderMonitor:
+      type: object
+      required:
+        [
+          orders,
+          fills,
+          audit_trail,
+          as_of,
+          source,
+          mode,
+          order_count,
+          working_count,
+          fill_count,
+        ]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        fills:
+          type: array
+          items:
+            $ref: "#/components/schemas/Fill"
+        audit_trail:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderAuditEvent"
+        as_of: { type: string, format: date-time }
+        source: { type: string, const: alpaca }
+        mode: { type: string, const: paper }
+        order_count: { type: integer, minimum: 0 }
+        working_count: { type: integer, minimum: 0 }
+        fill_count: { type: integer, minimum: 0 }
+    Fill:
+      type: object
+      required:
+        [
+          id,
+          order_id,
+          symbol,
+          side,
+          quantity,
+          cumulative_quantity,
+          leaves_quantity,
+          price,
+          type,
+          transaction_time,
+          source,
+          mode,
+        ]
+      properties:
+        id: { type: string }
+        order_id: { type: string }
+        symbol: { type: string }
+        side: { type: string }
+        quantity: { type: number }
+        cumulative_quantity: { type: number }
+        leaves_quantity: { type: number }
+        price: { type: number }
+        type: { type: string }
+        transaction_time: { type: string, format: date-time }
+        source: { type: string, const: alpaca }
+        mode: { type: string, const: paper }
+    OrderAuditEvent:
+      type: object
+      required:
+        [
+          id,
+          order_id,
+          symbol,
+          timestamp,
+          event,
+          status,
+          side,
+          quantity,
+          filled_quantity,
+          message,
+          source,
+        ]
+      properties:
+        id: { type: string }
+        order_id: { type: string }
+        symbol: { type: string }
+        timestamp: { type: string, format: date-time }
+        event: { type: string }
+        status: { type: string }
+        side: { type: string }
+        quantity: { type: number }
+        filled_quantity: { type: number }
+        price: { type: number }
+        message: { type: string }
+        source: { type: string }
     NewsFeedResponse:
       type: object
       required: [data, as_of, source, providers, count]

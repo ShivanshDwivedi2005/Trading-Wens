@@ -96,6 +96,16 @@ flowchart TD
 
 For illustration, an `NVDA` weight of 10.0% might move to 8.5% after a high-impact negative event. The actual change is determined by versioned policy and constraints. One event cluster cannot repeatedly reduce the holding beyond its cumulative cap.
 
+## Paper-order monitoring
+
+The authenticated order monitor reads the configured Alpaca paper account only. It combines the latest order records with `FILL` account activities so a user can inspect three distinct views:
+
+- **Order Book** shows working and completed orders, submitted and executed quantities, limit or market price, current status, and cancellation for orders Alpaca still marks as working.
+- **Fills** shows execution time, quantity, fill price, the current open-position mark when available, and the signed mark delta. Mark delta is contextual information, not realized profit or loss.
+- **Audit Trail** orders submission, status, cancellation, rejection, expiration, and execution messages by provider timestamp. Every row identifies whether its source was the Alpaca order API or account-activity API.
+
+The position outlook is a bounded directional scenario derived from current Alpaca unrealized P/L, today's mark movement, and confidence-weighted sentiment for matching Alpaca/GDELT headlines. It reports its score, confidence, reasons, and evidence sources. It is not presented as a guaranteed probability, exchange risk calculation, or investment recommendation.
+
 ## Portfolio stress testing
 
 ```mermaid
