@@ -30,7 +30,7 @@ financial-risk-intelligence/
 │   │   │       ├── alphavantage/
 │   │   │       ├── gdelt/
 │   │   │       ├── sec/
-│   │   │       └── reddit/
+│   │   │       └── x/
 │   │   ├── ingestion/
 │   │   │   ├── market.go
 │   │   │   ├── news.go

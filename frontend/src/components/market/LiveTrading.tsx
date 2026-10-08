@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { fetchStockHistory } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
 import { headlineSentiment } from "@/lib/portfolio-risk";
+import { fetchSocialPosts } from "@/lib/social-api";
 import {
   fetchTradingAssets,
   submitPaperOrder,
@@ -70,6 +71,13 @@ export function LiveTrading() {
     refetchInterval: 120_000,
     retry: 1,
   });
+  const social = useQuery({
+    queryKey: ["social", "stock", selected.symbol],
+    queryFn: () => fetchSocialPosts(selected.symbol),
+    staleTime: 120_000,
+    refetchInterval: 120_000,
+    retry: false,
+  });
   const order = useMutation({
     mutationFn: submitPaperOrder,
     onSuccess: () => {
@@ -86,13 +94,17 @@ export function LiveTrading() {
     : 0;
   const sentiment = useMemo(() => {
     const articles = news.data?.data ?? [];
-    const score = articles.length
-      ? articles.reduce((sum, article) => sum + headlineSentiment(article.title), 0) /
-        articles.length
+    const posts = social.data?.data ?? [];
+    const evidence = [
+      ...articles.map((article) => article.title),
+      ...posts.map((post) => post.text),
+    ];
+    const score = evidence.length
+      ? evidence.reduce((sum, text) => sum + headlineSentiment(text), 0) / evidence.length
       : 0;
     return {
       score,
-      confidence: Math.min(95, 35 + articles.length * 12),
+      confidence: Math.min(95, 35 + evidence.length * 8),
       action:
         score > 0.25
           ? "Research positive catalysts"
@@ -100,7 +112,7 @@ export function LiveTrading() {
             ? "Review downside risks"
             : "Wait for a stronger signal",
     };
-  }, [news.data]);
+  }, [news.data, social.data]);
 
   const orderInput: PaperOrderInput = {
     symbol: selected.symbol,
@@ -302,7 +314,7 @@ export function LiveTrading() {
       <section className="panel">
         <div className="trading-insight-grid">
           <div>
-            <div className="label text-primary">MODEL-PENDING HEADLINE HEURISTIC</div>
+            <div className="label text-primary">MODEL-PENDING TEXT HEURISTIC</div>
             <h2 className="mt-2 text-lg font-semibold">Sentiment and action context</h2>
             <div className="mt-5 flex flex-wrap gap-8">
               <Insight
@@ -313,7 +325,8 @@ export function LiveTrading() {
               <Insight label="Best action" value={sentiment.action} />
             </div>
             <p className="mt-4 text-[10px] leading-4 text-muted-foreground">
-              Based on keyword scoring of current headlines. It is not a trained model or investment
+              Based on keyword scoring of current headlines
+              {social.data?.count ? " and X posts" : ""}. It is not a trained model or investment
               advice.
             </p>
           </div>
@@ -334,6 +347,47 @@ export function LiveTrading() {
               ))}
               {!news.isPending && !news.data?.data.length && (
                 <div className="py-5 text-xs text-muted-foreground">No recent headlines found.</div>
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="label text-muted-foreground">LATEST X POSTS</div>
+            <div className="mt-3 divide-y divide-border" aria-busy={social.isPending}>
+              {social.isPending &&
+                Array.from({ length: 3 }, (_, index) => (
+                  <div className="py-3" key={`x-loading-${index}`}>
+                    <div className="h-3 animate-pulse rounded bg-secondary" />
+                    <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-secondary" />
+                  </div>
+                ))}
+              {social.data?.data.slice(0, 5).map((post) => (
+                <a
+                  key={post.id}
+                  href={post.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="block min-h-16 py-3 text-xs leading-4 hover:text-primary"
+                >
+                  <span className="line-clamp-2">{post.text}</span>
+                  <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                    <span>
+                      {post.username ? `@${post.username}` : post.author_name || "X user"}
+                    </span>
+                    <time dateTime={post.created_at}>
+                      {formatDistanceToNowStrict(new Date(post.created_at), { addSuffix: true })}
+                    </time>
+                  </span>
+                </a>
+              ))}
+              {social.error && (
+                <p role="alert" className="py-5 text-xs leading-5 text-muted-foreground">
+                  {social.error.message}
+                </p>
+              )}
+              {!social.isPending && !social.error && !social.data?.data.length && (
+                <div className="py-5 text-xs text-muted-foreground">
+                  No recent X posts found for {selected.symbol}.
+                </div>
               )}
             </div>
           </div>

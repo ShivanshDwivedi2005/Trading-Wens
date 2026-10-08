@@ -61,6 +61,35 @@ paths:
           description: Missing, expired, or invalid Google-backed application session
         "502":
           description: Authentication or news provider unavailable
+  /api/v1/social:
+    get:
+      summary: Get recent X posts for one stock
+      parameters:
+        - in: query
+          name: symbol
+          required: true
+          schema:
+            type: string
+          description: Stock ticker used to build the recent-search query
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Recent normalized X posts in provider order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialFeedResponse"
+        "400":
+          description: Missing symbol
+        "401":
+          description: Missing, expired, or invalid Google-backed application session
+        "404":
+          description: Invalid symbol format
+        "502":
+          description: X recent-search API unavailable
+        "503":
+          description: X source is not configured
   /api/v1/market/stocks/{symbol}/history:
     get:
       summary: Get recent Alpaca bars for one valid stock ticker
@@ -390,6 +419,59 @@ components:
           type: array
           items:
             type: string
+    SocialFeedResponse:
+      type: object
+      required: [data, as_of, source, symbol, count]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialPost"
+        as_of:
+          type: string
+          format: date-time
+        source:
+          type: string
+          const: x
+        symbol:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+    SocialPost:
+      type: object
+      required:
+        [
+          id,
+          text,
+          url,
+          author_name,
+          username,
+          created_at,
+          language,
+          matched_symbol,
+          metrics,
+        ]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        url: { type: string, format: uri }
+        author_name: { type: string }
+        username: { type: string }
+        avatar_url: { type: string, format: uri }
+        created_at: { type: string, format: date-time }
+        language: { type: string }
+        matched_symbol: { type: string }
+        metrics:
+          $ref: "#/components/schemas/SocialMetrics"
+    SocialMetrics:
+      type: object
+      required: [likes, replies, reposts, quotes]
+      properties:
+        likes: { type: integer, minimum: 0 }
+        replies: { type: integer, minimum: 0 }
+        reposts: { type: integer, minimum: 0 }
+        quotes: { type: integer, minimum: 0 }
     MarketSnapshotResponse:
       type: object
       required: [data, as_of, feed, source, count]

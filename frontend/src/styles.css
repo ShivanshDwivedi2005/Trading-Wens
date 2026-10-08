@@ -911,9 +911,11 @@ h3,
   .overview-stock-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .overview-columns,
-  .trading-insight-grid {
+  .overview-columns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .trading-insight-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .portfolio-position-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

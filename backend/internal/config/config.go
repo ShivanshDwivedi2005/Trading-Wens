@@ -26,6 +26,9 @@ type Config struct {
 	AlpacaAPISecretKey string
 	AlpacaDataFeed     string
 	GDELTAPIURL        string
+	XEnabled           bool
+	XAPIURL            string
+	XBearerToken       string
 	CORSAllowedOrigins []string
 }
 
@@ -47,6 +50,8 @@ func Load() (Config, error) {
 		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
 		GDELTAPIURL:        strings.TrimRight(valueOrDefault("GDELT_API_URL", "https://api.gdeltproject.org/api/v2/doc/doc"), "/"),
+		XAPIURL:            strings.TrimRight(valueOrDefault("X_API_URL", "https://api.x.com"), "/"),
+		XBearerToken:       strings.TrimSpace(os.Getenv("X_BEARER_TOKEN")),
 		CORSAllowedOrigins: splitList(valueOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
 	}
 
@@ -92,6 +97,17 @@ func Load() (Config, error) {
 	cfg.AlpacaTradingURL = normalizedTradingURL
 	if !strings.HasPrefix(cfg.GDELTAPIURL, "https://") && !strings.HasPrefix(cfg.GDELTAPIURL, "http://") {
 		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
+	}
+	if !validHTTPURL(cfg.XAPIURL) {
+		return Config{}, errors.New("X_API_URL must be an HTTP or HTTPS URL")
+	}
+	xEnabled, err := strconv.ParseBool(valueOrDefault("X_ENABLED", "false"))
+	if err != nil {
+		return Config{}, errors.New("X_ENABLED must be true or false")
+	}
+	cfg.XEnabled = xEnabled
+	if cfg.XEnabled && cfg.XBearerToken == "" {
+		return Config{}, errors.New("X_BEARER_TOKEN is required when X_ENABLED is true")
 	}
 	if !validAlpacaFeed(cfg.AlpacaDataFeed) {
 		return Config{}, fmt.Errorf("unsupported ALPACA_DATA_FEED %q", cfg.AlpacaDataFeed)

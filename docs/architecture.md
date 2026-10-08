@@ -25,7 +25,7 @@ flowchart LR
     Go --> Providers[External providers]
     Providers --> Market[Alpaca / Finnhub / Twelve Data]
     Providers --> News[Marketaux / Finnhub News / Alpha Vantage / GDELT / SEC]
-    Providers --> Social[Reddit / approved social sources]
+    Providers --> Social[X recent-search API]
 ```
 
 Only the following services are required at runtime:

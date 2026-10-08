@@ -11,6 +11,7 @@ import (
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/googleauth"
+	xprovider "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/x"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
 
@@ -61,6 +62,15 @@ func main() {
 		logger.Fatal(err)
 	}
 	newsHandler := httpapi.NewNewsHandler(newsClient)
+	var socialService httpapi.SocialService
+	if cfg.XEnabled {
+		xClient, err := xprovider.NewClient(cfg.XAPIURL, cfg.XBearerToken, market.SP500TopThirty, nil)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		socialService = xClient
+	}
+	socialHandler := httpapi.NewSocialHandler(socialService)
 
 	router := http.NewServeMux()
 	router.HandleFunc("/api/v1/auth/google/start", authHandler.Start)
@@ -78,6 +88,10 @@ func main() {
 	router.Handle(
 		"/api/v1/news",
 		httpapi.RequireAuth(authClient, http.HandlerFunc(newsHandler.Latest)),
+	)
+	router.Handle(
+		"/api/v1/social",
+		httpapi.RequireAuth(authClient, http.HandlerFunc(socialHandler.Latest)),
 	)
 	router.Handle(
 		"/api/v1/trading/portfolio",

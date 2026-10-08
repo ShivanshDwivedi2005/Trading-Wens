@@ -42,7 +42,7 @@ Redis receives current market state immediately. PostgreSQL receives historical 
 
 ```mermaid
 flowchart TD
-    Sources[Marketaux / Finnhub / SEC / GDELT / Reddit] --> Receive[Receive item]
+    Sources[Marketaux / Finnhub / SEC / GDELT / X] --> Receive[Receive item]
     Receive --> Normalize[Normalize and clean text]
     Normalize --> Fingerprint[Generate fingerprint]
     Fingerprint --> Exact{Already processed?}
