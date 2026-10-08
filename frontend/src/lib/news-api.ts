@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { authenticatedFetch } from "./auth-api";
 
 const newsArticleSchema = z.object({
   id: z.string(),
@@ -28,21 +28,8 @@ export function parseNewsFeed(value: unknown): NewsFeedResponse {
 }
 
 export async function fetchMarketNews(symbol?: string): Promise<NewsFeedResponse> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error("Your session has expired. Sign in again to load market news.");
-  }
-
-  const configuredBaseURL = import.meta.env["VITE_API_BASE_URL"]?.trim() ?? "";
   const params = symbol ? `?${new URLSearchParams({ symbol })}` : "";
-  const response = await fetch(`${configuredBaseURL.replace(/\/$/, "")}/api/v1/news${params}`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+  const response = await authenticatedFetch(`/api/v1/news${params}`);
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error("Your session has expired. Sign in again to load market news.");

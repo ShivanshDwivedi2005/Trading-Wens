@@ -5,7 +5,7 @@ import { routeTree } from "@/routeTree.gen";
 
 describe("App routing", () => {
   const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-  it.each(["/", "/demo", "/auth", "/reset-password", "/dashboard", "/stocks/AAPL"])(
+  it.each(["/", "/demo", "/auth", "/dashboard", "/stocks/AAPL"])(
     "matches a page for %s",
     (path) => {
       const matches = router.matchRoutes(path);

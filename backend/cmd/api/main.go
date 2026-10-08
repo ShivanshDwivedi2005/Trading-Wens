@@ -10,7 +10,7 @@ import (
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
-	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/googleauth"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
 
@@ -22,11 +22,18 @@ func main() {
 		logger.Fatal(err)
 	}
 
-	authClient, err := supabase.NewClient(cfg.SupabaseURL, cfg.SupabasePublishableKey, nil)
+	authClient, err := googleauth.NewClient(
+		cfg.GoogleClientID,
+		cfg.GoogleClientSecret,
+		cfg.GoogleRedirectURL,
+		cfg.SessionSecret,
+		cfg.SessionTTL,
+		nil,
+	)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	authHandler := httpapi.NewAuthHandler(authClient)
+	authHandler := httpapi.NewGoogleAuthHandler(authClient, cfg.FrontendURL)
 	marketClient, err := alpaca.NewClient(
 		cfg.AlpacaDataURL,
 		cfg.AlpacaAPIKeyID,
@@ -56,8 +63,10 @@ func main() {
 	newsHandler := httpapi.NewNewsHandler(newsClient)
 
 	router := http.NewServeMux()
-	router.HandleFunc("/api/v1/auth/login", authHandler.Login)
-	router.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
+	router.HandleFunc("/api/v1/auth/google/start", authHandler.Start)
+	router.HandleFunc("/auth/google/callback", authHandler.Callback)
+	router.HandleFunc("/api/v1/auth/session", authHandler.Session)
+	router.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
 	router.Handle(
 		"/api/v1/market/snapshots",
 		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.Snapshots)),

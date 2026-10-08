@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarketScene } from "@/components/market/MarketScene";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchCurrentUser } from "@/lib/auth-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -45,12 +45,17 @@ function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
-    const onUser = (user: boolean) => setSignedIn(user);
-    supabase.auth.getUser().then(({ data }) => onUser(Boolean(data.user)));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) =>
-      onUser(Boolean(session?.user)),
-    );
-    return () => listener.subscription.unsubscribe();
+    let active = true;
+    fetchCurrentUser()
+      .then((user) => {
+        if (active) setSignedIn(Boolean(user));
+      })
+      .catch(() => {
+        if (active) setSignedIn(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
   return (
     <div className="landing min-h-screen bg-background text-foreground">

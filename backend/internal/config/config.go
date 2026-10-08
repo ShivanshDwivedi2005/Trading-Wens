@@ -7,20 +7,26 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	Address                string
-	SupabaseURL            string
-	SupabasePublishableKey string
-	AlpacaDataURL          string
-	AlpacaTradingURL       string
-	AlpacaAPIKeyID         string
-	AlpacaAPISecretKey     string
-	AlpacaDataFeed         string
-	GDELTAPIURL            string
-	CORSAllowedOrigins     []string
+	Address            string
+	FrontendURL        string
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleRedirectURL  string
+	SessionSecret      string
+	SessionTTL         time.Duration
+	AlpacaDataURL      string
+	AlpacaTradingURL   string
+	AlpacaAPIKeyID     string
+	AlpacaAPISecretKey string
+	AlpacaDataFeed     string
+	GDELTAPIURL        string
+	CORSAllowedOrigins []string
 }
 
 func Load() (Config, error) {
@@ -29,17 +35,12 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		Address: valueOrDefault("BACKEND_ADDRESS", ":8080"),
-		SupabaseURL: strings.TrimRight(firstValue(
-			"AUTH_SUPABASE_URL",
-			"VITE_SUPABASE_URL",
-			"SUPABASE_URL",
-		), "/"),
-		SupabasePublishableKey: firstValue(
-			"AUTH_SUPABASE_PUBLISHABLE_KEY",
-			"VITE_SUPABASE_PUBLISHABLE_KEY",
-			"SUPABASE_PUBLISHABLE_KEY",
-		),
+		Address:            valueOrDefault("BACKEND_ADDRESS", ":8080"),
+		FrontendURL:        strings.TrimRight(valueOrDefault("FRONTEND_URL", "http://localhost:3000"), "/"),
+		GoogleClientID:     strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")),
+		GoogleClientSecret: strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
+		GoogleRedirectURL:  strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")),
+		SessionSecret:      strings.TrimSpace(os.Getenv("JWT_ACCESS_SECRET")),
 		AlpacaDataURL:      strings.TrimRight(valueOrDefault("ALPACA_DATA_REST_URL", "https://data.alpaca.markets"), "/"),
 		AlpacaTradingURL:   valueOrDefault("ALPACA_TRADING_REST_URL", "https://paper-api.alpaca.markets"),
 		AlpacaAPIKeyID:     strings.TrimSpace(os.Getenv("ALPACA_API_KEY_ID")),
@@ -50,11 +51,17 @@ func Load() (Config, error) {
 	}
 
 	var missing []string
-	if cfg.SupabaseURL == "" {
-		missing = append(missing, "SUPABASE_URL")
+	if cfg.GoogleClientID == "" {
+		missing = append(missing, "GOOGLE_CLIENT_ID")
 	}
-	if cfg.SupabasePublishableKey == "" {
-		missing = append(missing, "SUPABASE_PUBLISHABLE_KEY")
+	if cfg.GoogleClientSecret == "" {
+		missing = append(missing, "GOOGLE_CLIENT_SECRET")
+	}
+	if cfg.GoogleRedirectURL == "" {
+		missing = append(missing, "GOOGLE_REDIRECT_URI")
+	}
+	if cfg.SessionSecret == "" {
+		missing = append(missing, "JWT_ACCESS_SECRET")
 	}
 	if cfg.AlpacaAPIKeyID == "" {
 		missing = append(missing, "ALPACA_API_KEY_ID")
@@ -66,8 +73,14 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
 
-	if !strings.HasPrefix(cfg.SupabaseURL, "https://") && !strings.HasPrefix(cfg.SupabaseURL, "http://") {
-		return Config{}, errors.New("SUPABASE_URL must be an HTTP or HTTPS URL")
+	if len(cfg.SessionSecret) < 32 {
+		return Config{}, errors.New("JWT_ACCESS_SECRET must contain at least 32 characters")
+	}
+	if !validHTTPURL(cfg.FrontendURL) {
+		return Config{}, errors.New("FRONTEND_URL must be an HTTP or HTTPS URL")
+	}
+	if !validHTTPURL(cfg.GoogleRedirectURL) {
+		return Config{}, errors.New("GOOGLE_REDIRECT_URI must be an HTTP or HTTPS URL")
 	}
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {
 		return Config{}, errors.New("ALPACA_DATA_REST_URL must be an HTTP or HTTPS URL")
@@ -83,8 +96,18 @@ func Load() (Config, error) {
 	if !validAlpacaFeed(cfg.AlpacaDataFeed) {
 		return Config{}, fmt.Errorf("unsupported ALPACA_DATA_FEED %q", cfg.AlpacaDataFeed)
 	}
+	sessionTTLSeconds, err := strconv.Atoi(valueOrDefault("AUTH_SESSION_TTL_SECONDS", "28800"))
+	if err != nil || sessionTTLSeconds < 300 || sessionTTLSeconds > 604800 {
+		return Config{}, errors.New("AUTH_SESSION_TTL_SECONDS must be between 300 and 604800")
+	}
+	cfg.SessionTTL = time.Duration(sessionTTLSeconds) * time.Second
 
 	return cfg, nil
+}
+
+func validHTTPURL(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
 }
 
 func normalizeAlpacaTradingURL(value string) (string, error) {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
-	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
 )
 
 type marketServiceStub struct {
@@ -58,7 +57,7 @@ func TestMarketSnapshotsHandler(t *testing.T) {
 func TestRequireAuth(t *testing.T) {
 	verifier := sessionVerifierStub{user: func(_ context.Context, token string) (domain.User, error) {
 		if token != "valid-token" {
-			return domain.User{}, &supabase.APIError{Status: http.StatusUnauthorized, Code: "bad_jwt", Message: "invalid"}
+			return domain.User{}, errors.New("invalid session")
 		}
 		return domain.User{ID: "user-1"}, nil
 	}}
@@ -73,7 +72,7 @@ func TestRequireAuth(t *testing.T) {
 	}
 
 	authorizedRequest := httptest.NewRequest(http.MethodGet, "/", nil)
-	authorizedRequest.Header.Set("Authorization", "Bearer valid-token")
+	authorizedRequest.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "valid-token"})
 	authorized := httptest.NewRecorder()
 	protected.ServeHTTP(authorized, authorizedRequest)
 	if authorized.Code != http.StatusNoContent {
@@ -138,5 +137,8 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 
 	if res.Code != http.StatusNoContent || res.Header().Get("Access-Control-Allow-Origin") != "http://localhost:3000" {
 		t.Fatalf("unexpected CORS response: %d %#v", res.Code, res.Header())
+	}
+	if res.Header().Get("Access-Control-Allow-Credentials") != "true" {
+		t.Fatal("expected credentialed CORS response")
 	}
 }

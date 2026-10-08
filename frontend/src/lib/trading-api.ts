@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { authenticatedFetch } from "./auth-api";
 
 const accountSchema = z.object({
   id: z.string(),
@@ -92,25 +92,8 @@ export function parsePaperOrder(value: unknown): PaperOrder {
   return orderSchema.parse(value);
 }
 
-function apiBaseURL() {
-  return (import.meta.env["VITE_API_BASE_URL"]?.trim() ?? "").replace(/\/$/, "");
-}
-
 async function authorizedFetch(path: string, init?: RequestInit) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.access_token) {
-    throw new Error("Your session has expired. Sign in again.");
-  }
-  const response = await fetch(`${apiBaseURL()}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${session.access_token}`,
-      ...init?.headers,
-    },
-  });
+  const response = await authenticatedFetch(path, init);
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
       error?: { message?: string };

@@ -2,12 +2,10 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
-	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
 )
 
 type SessionVerifier interface {
@@ -16,20 +14,15 @@ type SessionVerifier interface {
 
 func RequireAuth(verifier SessionVerifier, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authorization := strings.TrimSpace(r.Header.Get("Authorization"))
-		scheme, token, found := strings.Cut(authorization, " ")
-		if !found || !strings.EqualFold(scheme, "Bearer") || strings.TrimSpace(token) == "" {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "A valid bearer token is required")
+		cookie, err := r.Cookie(sessionCookieName)
+		if err != nil || cookie.Value == "" {
+			writeError(w, http.StatusUnauthorized, "unauthorized", "Google sign-in is required")
 			return
 		}
 
-		if _, err := verifier.User(r.Context(), strings.TrimSpace(token)); err != nil {
-			var apiErr *supabase.APIError
-			if errors.As(err, &apiErr) && (apiErr.Status == http.StatusUnauthorized || apiErr.Status == http.StatusForbidden) {
-				writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
-				return
-			}
-			writeError(w, http.StatusBadGateway, "authentication_unavailable", "Authentication service is unavailable")
+		if _, err := verifier.User(r.Context(), cookie.Value); err != nil {
+			clearSessionCookie(w, r)
+			writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
 			return
 		}
 
@@ -48,7 +41,8 @@ func CORS(allowedOrigins []string, next http.Handler) http.Handler {
 		_, originAllowed := allowed[origin]
 		if origin != "" && originAllowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Add("Vary", "Origin")
 		}

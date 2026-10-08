@@ -27,7 +27,7 @@ cd ..
 pnpm dev
 ```
 
-Fill in the public Supabase values in `frontend/.env` and the server-side provider values in `.env`. Both files are ignored by Git. During local development the backend reads the public auth project from `frontend/.env` so it can validate the same sessions the browser creates. Alpaca and Supabase secret keys remain server-only.
+Configure the Google OAuth web client and server-side provider values in `.env`. The registered Google redirect URI must exactly match `GOOGLE_REDIRECT_URI`; locally it is `http://localhost:8080/auth/google/callback`. Credentials remain server-only, while the browser receives only a signed HTTP-only application session cookie.
 
 ## Quality checks
 
@@ -41,8 +41,8 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
-- Supabase authentication and PostgreSQL
-- Go backend with Supabase session validation, Alpaca snapshots and bars, and GDELT news
+- Google OpenID Connect authentication with signed HTTP-only sessions
+- Go backend with Google OAuth, Alpaca snapshots and bars, and GDELT news
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 

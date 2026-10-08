@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchCurrentUser, signOut } from "@/lib/auth-api";
 import { initialEvents, severityRank, type RiskEvent } from "@/lib/market";
 import { LiveTrading } from "./LiveTrading";
 import { AccountOverview, LiveRiskFeed, PortfolioStatus } from "./PortfolioViews";
@@ -47,19 +47,9 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
   useEffect(() => {
     if (demo) return;
     let alive = true;
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!alive || !data.user) return;
-      const name =
-        data.user.user_metadata?.["full_name"] || data.user.email?.split("@")[0] || "Analyst";
-      setProfileName(name);
-      const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", data.user.id)
-        .maybeSingle();
-      if (alive && !existing) {
-        await supabase.from("profiles").upsert({ id: data.user.id, display_name: name });
-      }
+    fetchCurrentUser().then((user) => {
+      if (!alive || !user) return;
+      setProfileName(user.display_name || user.email.split("@")[0] || "Analyst");
     });
     return () => {
       alive = false;
@@ -93,7 +83,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
   const onSignOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await signOut();
     navigate({ to: "/auth", search: { mode: "login" }, replace: true });
   };
 

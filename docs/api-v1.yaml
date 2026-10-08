@@ -5,6 +5,40 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/auth/google/start:
+    get:
+      summary: Start Google OpenID Connect authorization with PKCE
+      responses:
+        "302":
+          description: Redirect to Google's authorization endpoint
+  /auth/google/callback:
+    get:
+      summary: Complete Google authorization and create an HTTP-only application session
+      responses:
+        "302":
+          description: Redirect to the authenticated dashboard or back to sign-in with an error
+  /api/v1/auth/session:
+    get:
+      summary: Get the current Google-authenticated user
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Missing, expired, or invalid application session
+  /api/v1/auth/logout:
+    post:
+      summary: Clear the current application session
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Session cleared
   /api/v1/news:
     get:
       summary: Get recent large-cap company news
@@ -15,7 +49,7 @@ paths:
             type: string
           description: Optional valid stock ticker for a focused company query
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       responses:
         "200":
           description: Recent normalized GDELT articles in descending publication order
@@ -24,14 +58,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/NewsFeedResponse"
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "502":
           description: Authentication or news provider unavailable
   /api/v1/market/stocks/{symbol}/history:
     get:
       summary: Get recent Alpaca bars for one valid stock ticker
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       parameters:
         - in: path
           name: symbol
@@ -54,7 +88,7 @@ paths:
         "400":
           description: Unsupported history range
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "404":
           description: Symbol format is invalid
         "502":
@@ -63,7 +97,7 @@ paths:
     get:
       summary: Get the current large-cap market watchlist
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       responses:
         "200":
           description: Latest normalized Alpaca snapshots in maintained watchlist order
@@ -72,14 +106,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarketSnapshotResponse"
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "502":
           description: Authentication or market-data provider unavailable
   /api/v1/trading/portfolio:
     get:
       summary: Get the configured Alpaca paper account and open positions
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       responses:
         "200":
           description: Current paper-account portfolio
@@ -88,14 +122,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Portfolio"
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "502":
           description: Alpaca paper-trading service unavailable
   /api/v1/trading/assets:
     get:
       summary: Search active tradable US equities
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       parameters:
         - in: query
           name: search
@@ -109,14 +143,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/TradingAssetsResponse"
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "502":
           description: Alpaca paper-trading service unavailable
   /api/v1/trading/orders:
     post:
       summary: Submit a market or limit order to the Alpaca paper account
       security:
-        - bearerAuth: []
+        - cookieAuth: []
       requestBody:
         required: true
         content:
@@ -131,18 +165,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
         "401":
-          description: Missing, expired, or invalid Supabase access token
+          description: Missing, expired, or invalid Google-backed application session
         "422":
           description: Invalid order input
         "502":
           description: Alpaca paper-trading service unavailable
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: trading_wens_session
   schemas:
+    AuthSession:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/GoogleUser"
+    GoogleUser:
+      type: object
+      required: [id, email]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        display_name: { type: string }
+        avatar_url: { type: string, format: uri }
     Portfolio:
       type: object
       required: [account, positions, as_of, source, mode]
@@ -164,7 +212,20 @@ components:
           const: paper
     TradingAccount:
       type: object
-      required: [id, status, currency, cash, buying_power, portfolio_value, equity, last_equity, long_market_value, trading_blocked, pattern_day_trader]
+      required:
+        [
+          id,
+          status,
+          currency,
+          cash,
+          buying_power,
+          portfolio_value,
+          equity,
+          last_equity,
+          long_market_value,
+          trading_blocked,
+          pattern_day_trader,
+        ]
       properties:
         id: { type: string }
         status: { type: string }
@@ -179,7 +240,20 @@ components:
         pattern_day_trader: { type: boolean }
     Position:
       type: object
-      required: [symbol, asset_id, side, quantity, average_entry_price, current_price, market_value, cost_basis, unrealized_pl, unrealized_pl_percent, change_today]
+      required:
+        [
+          symbol,
+          asset_id,
+          side,
+          quantity,
+          average_entry_price,
+          current_price,
+          market_value,
+          cost_basis,
+          unrealized_pl,
+          unrealized_pl_percent,
+          change_today,
+        ]
       properties:
         symbol: { type: string }
         asset_id: { type: string }
@@ -205,7 +279,17 @@ components:
         mode: { type: string, const: paper }
     TradingAsset:
       type: object
-      required: [id, symbol, name, exchange, asset_class, status, tradable, fractionable]
+      required:
+        [
+          id,
+          symbol,
+          name,
+          exchange,
+          asset_class,
+          status,
+          tradable,
+          fractionable,
+        ]
       properties:
         id: { type: string }
         symbol: { type: string }
@@ -227,7 +311,20 @@ components:
         time_in_force: { type: string, const: day }
     Order:
       type: object
-      required: [id, client_order_id, symbol, quantity, filled_quantity, side, type, time_in_force, status, submitted_at, mode]
+      required:
+        [
+          id,
+          client_order_id,
+          symbol,
+          quantity,
+          filled_quantity,
+          side,
+          type,
+          time_in_force,
+          status,
+          submitted_at,
+          mode,
+        ]
       properties:
         id: { type: string }
         client_order_id: { type: string }
@@ -315,7 +412,8 @@ components:
           minimum: 0
     StockHistoryResponse:
       type: object
-      required: [symbol, name, data, as_of, range, timeframe, feed, source, count]
+      required:
+        [symbol, name, data, as_of, range, timeframe, feed, source, count]
       properties:
         symbol:
           type: string

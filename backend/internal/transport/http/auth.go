@@ -2,153 +2,172 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"net/http"
-	"net/mail"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
-	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/supabase"
 )
 
-const maxRequestSize = 64 << 10
+const (
+	sessionCookieName  = "trading_wens_session"
+	stateCookieName    = "trading_wens_oauth_state"
+	verifierCookieName = "trading_wens_oauth_verifier"
+)
 
-type AuthService interface {
-	Login(ctx context.Context, email, password string) (domain.AuthResult, error)
-	Signup(ctx context.Context, email, password, displayName string) (domain.AuthResult, error)
+type GoogleAuthService interface {
+	AuthorizationURL(state, challenge string) string
+	Exchange(ctx context.Context, code, verifier string) (domain.User, error)
+	CreateSession(user domain.User) (string, error)
+	User(ctx context.Context, token string) (domain.User, error)
+	SessionTTL() time.Duration
 }
 
-type AuthHandler struct {
-	service AuthService
+type GoogleAuthHandler struct {
+	service     GoogleAuthService
+	frontendURL string
 }
 
-func NewAuthHandler(service AuthService) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewGoogleAuthHandler(service GoogleAuthService, frontendURL string) *GoogleAuthHandler {
+	return &GoogleAuthHandler{service: service, frontendURL: strings.TrimRight(frontendURL, "/")}
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *GoogleAuthHandler) Start(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET is allowed")
+		return
+	}
+	state, err := secureToken(32)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "authentication_failed", "Google sign-in could not be started")
+		return
+	}
+	verifier, err := secureToken(48)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "authentication_failed", "Google sign-in could not be started")
+		return
+	}
+	challengeBytes := sha256.Sum256([]byte(verifier))
+	setTemporaryCookie(w, r, stateCookieName, state)
+	setTemporaryCookie(w, r, verifierCookieName, verifier)
+	http.Redirect(w, r, h.service.AuthorizationURL(state, base64.RawURLEncoding.EncodeToString(challengeBytes[:])), http.StatusFound)
+}
+
+func (h *GoogleAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET is allowed")
+		return
+	}
+	clearOAuthCookies(w, r)
+	if r.URL.Query().Get("error") != "" {
+		h.redirectAuthError(w, r, "Google sign-in was cancelled or denied")
+		return
+	}
+	stateCookie, stateErr := r.Cookie(stateCookieName)
+	verifierCookie, verifierErr := r.Cookie(verifierCookieName)
+	providedState := r.URL.Query().Get("state")
+	if stateErr != nil || verifierErr != nil || providedState == "" || subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(providedState)) != 1 {
+		h.redirectAuthError(w, r, "The sign-in request expired. Please try again")
+		return
+	}
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	if code == "" {
+		h.redirectAuthError(w, r, "Google did not return an authorization code")
+		return
+	}
+	user, err := h.service.Exchange(r.Context(), code, verifierCookie.Value)
+	if err != nil {
+		h.redirectAuthError(w, r, "Google sign-in could not be completed")
+		return
+	}
+	session, err := h.service.CreateSession(user)
+	if err != nil {
+		h.redirectAuthError(w, r, "A secure session could not be created")
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookieName, Value: session, Path: "/", HttpOnly: true,
+		Secure: secureRequest(r), SameSite: http.SameSiteLaxMode,
+		MaxAge: int(h.service.SessionTTL().Seconds()), Expires: time.Now().Add(h.service.SessionTTL()),
+	})
+	http.Redirect(w, r, h.frontendURL+"/dashboard", http.StatusFound)
+}
+
+func (h *GoogleAuthHandler) Session(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET is allowed")
+		return
+	}
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Google sign-in is required")
+		return
+	}
+	user, err := h.service.User(r.Context(), cookie.Value)
+	if err != nil {
+		clearSessionCookie(w, r)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, map[string]domain.User{"user": user})
+}
+
+func (h *GoogleAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
 		return
 	}
-
-	var request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-
-	request.Email = strings.ToLower(strings.TrimSpace(request.Email))
-	if !validEmail(request.Email) {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_email", "Enter a valid email address")
-		return
-	}
-	if len(request.Password) < 8 {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_password", "Password must contain at least 8 characters")
-		return
-	}
-
-	result, err := h.service.Login(r.Context(), request.Email, request.Password)
-	if err != nil {
-		writeServiceError(w, err)
-		return
-	}
-
+	clearSessionCookie(w, r)
 	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, http.StatusOK, result)
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
-		return
-	}
-
-	var request struct {
-		Email       string `json:"email"`
-		Password    string `json:"password"`
-		DisplayName string `json:"display_name"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-
-	request.Email = strings.ToLower(strings.TrimSpace(request.Email))
-	request.DisplayName = strings.TrimSpace(request.DisplayName)
-	if !validEmail(request.Email) {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_email", "Enter a valid email address")
-		return
-	}
-	if len(request.Password) < 8 {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_password", "Password must contain at least 8 characters")
-		return
-	}
-	if len(request.DisplayName) < 2 || len(request.DisplayName) > 100 {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_display_name", "Display name must contain between 2 and 100 characters")
-		return
-	}
-
-	result, err := h.service.Signup(r.Context(), request.Email, request.Password, request.DisplayName)
-	if err != nil {
-		writeServiceError(w, err)
-		return
-	}
-
-	w.Header().Set("Cache-Control", "no-store")
-	writeJSON(w, http.StatusCreated, result)
+func (h *GoogleAuthHandler) redirectAuthError(w http.ResponseWriter, r *http.Request, message string) {
+	destination := h.frontendURL + "/auth?" + url.Values{"error": {message}}.Encode()
+	http.Redirect(w, r, destination, http.StatusFound)
 }
 
-func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestSize)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(destination); err != nil {
-		return errors.New("Request body must be valid JSON with the expected fields")
+func secureToken(size int) (string, error) {
+	value := make([]byte, size)
+	if _, err := rand.Read(value); err != nil {
+		return "", err
 	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return errors.New("Request body must contain one JSON object")
-	}
-	return nil
+	return base64.RawURLEncoding.EncodeToString(value), nil
 }
 
-func validEmail(value string) bool {
-	address, err := mail.ParseAddress(value)
-	return err == nil && address.Address == value
-}
-
-func writeServiceError(w http.ResponseWriter, err error) {
-	var apiErr *supabase.APIError
-	if errors.As(err, &apiErr) {
-		status := apiErr.Status
-		if status < http.StatusBadRequest || status >= http.StatusInternalServerError {
-			status = http.StatusBadGateway
-		}
-		writeError(w, status, apiErr.Code, apiErr.Message)
-		return
-	}
-	writeError(w, http.StatusBadGateway, "authentication_unavailable", "Authentication service is unavailable")
-}
-
-func writeError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, map[string]any{
-		"error": map[string]string{
-			"code":    code,
-			"message": message,
-		},
+func setTemporaryCookie(w http.ResponseWriter, r *http.Request, name, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: value, Path: "/", HttpOnly: true, Secure: secureRequest(r),
+		SameSite: http.SameSiteLaxMode, MaxAge: 600, Expires: time.Now().Add(10 * time.Minute),
 	})
 }
 
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
+func clearOAuthCookies(w http.ResponseWriter, r *http.Request) {
+	clearCookie(w, r, stateCookieName)
+	clearCookie(w, r, verifierCookieName)
+}
+
+func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
+	clearCookie(w, r, sessionCookieName)
+}
+
+func clearCookie(w http.ResponseWriter, r *http.Request, name string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: "", Path: "/", HttpOnly: true, Secure: secureRequest(r),
+		SameSite: http.SameSiteLaxMode, MaxAge: -1, Expires: time.Unix(1, 0),
+	})
+}
+
+func secureRequest(r *http.Request) bool {
+	return r.TLS != nil || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")
 }
