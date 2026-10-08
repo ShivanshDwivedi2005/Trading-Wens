@@ -7,6 +7,7 @@ import { fetchMarketSnapshots } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
 import { portfolioRisk, positionRisk, sentimentWatchlist } from "@/lib/portfolio-risk";
 import { fetchTradingPortfolio } from "@/lib/trading-api";
+import { AccountExecutionOverview } from "./AccountExecutionOverview";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -104,6 +105,8 @@ export function AccountOverview() {
         <Metric label="BUYING POWER" value={money.format(portfolio.data.account.buying_power)} />
         <Metric label="OPEN POSITIONS" value={String(positions.length)} />
       </section>
+
+      <AccountExecutionOverview portfolio={portfolio.data} />
 
       <section className="panel">
         <SectionHeading

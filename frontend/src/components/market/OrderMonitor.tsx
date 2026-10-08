@@ -37,6 +37,7 @@ import {
   type OrderAuditEvent,
   type PaperFill,
   type PaperOrder,
+  type TradingPosition,
 } from "@/lib/trading-api";
 
 type MonitorView = "orders" | "fills" | "audit";
@@ -384,21 +385,21 @@ function TerminalTab({
       className={`terminal-tab ${active ? "terminal-tab-active" : ""}`}
       onClick={onClick}
     >
-      <Icon size={14} /> {label} <span>{count}</span>
+      <Icon size={14} aria-hidden="true" /> {label} <span>{count}</span>
     </button>
   );
 }
 
-function OrderBook({
+export function OrderBook({
   orders,
   onCancel,
 }: {
   orders: PaperOrder[];
-  onCancel: (order: PaperOrder) => void;
+  onCancel?: (order: PaperOrder) => void;
 }) {
   return (
     <div className="overflow-x-auto">
-      <div className="order-grid min-w-[980px]" role="table" aria-label="Alpaca paper order book">
+      <div className="order-grid min-w-[1480px]" role="table" aria-label="Alpaca paper order book">
         <div className="order-grid-row order-grid-head" role="row">
           <span>Time</span>
           <span>Contract</span>
@@ -408,6 +409,10 @@ function OrderBook({
           <span>Executed</span>
           <span>Price</span>
           <span>Status</span>
+          <span>Sentiment</span>
+          <span>Direction</span>
+          <span>Confidence</span>
+          <span>Signal reason</span>
           <span>Action</span>
         </div>
         {orders.map((order) => (
@@ -426,7 +431,27 @@ function OrderBook({
               {order.limit_price ? money.format(order.limit_price) : "MKT"}
             </span>
             <StatusBadge status={order.status} working={order.working} />
-            {order.working ? (
+            <SignalBadge signal={order.signal?.sentiment} />
+            <DirectionCell
+              direction={order.signal?.price_direction}
+              possibility={order.signal?.possibility}
+            />
+            <span className="tabular-nums">
+              {order.signal ? `${Math.round(order.signal.confidence * 100)}%` : "—"}
+            </span>
+            <span
+              className="signal-reason"
+              tabIndex={0}
+              aria-label={order.signal?.reason ?? "No matched sentiment evidence"}
+              title={
+                order.signal
+                  ? `${order.signal.reason}\nSources: ${order.signal.sources.join(", ")}`
+                  : "No model-scored evidence is available."
+              }
+            >
+              {order.signal?.reason ?? "No matched evidence"}
+            </span>
+            {order.working && onCancel ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -434,6 +459,12 @@ function OrderBook({
                 onClick={() => onCancel(order)}
               >
                 <XCircle size={13} /> Cancel
+              </Button>
+            ) : order.working ? (
+              <Button asChild variant="ghost" size="sm" className="min-h-11 px-2 text-xs">
+                <Link to="/orders" search={{ symbol: order.symbol }}>
+                  Manage
+                </Link>
               </Button>
             ) : (
               <span className="text-[10px] text-muted-foreground">Complete</span>
@@ -446,7 +477,29 @@ function OrderBook({
   );
 }
 
-function FillsView({
+function SignalBadge({ signal }: { signal: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | undefined }) {
+  const value = signal ?? "NEUTRAL";
+  return <span className={`signal-badge signal-${value.toLowerCase()}`}>{value}</span>;
+}
+
+function DirectionCell({
+  direction,
+  possibility,
+}: {
+  direction: "UP" | "SIDEWAYS" | "DOWN" | undefined;
+  possibility: number | undefined;
+}) {
+  const value = direction ?? "SIDEWAYS";
+  const Icon = value === "DOWN" ? TrendingDown : TrendingUp;
+  return (
+    <span className={`direction-cell direction-${value.toLowerCase()}`}>
+      <Icon size={12} aria-hidden="true" />
+      {value} {possibility ?? 50}%
+    </span>
+  );
+}
+
+export function FillsView({
   fills,
   positions,
 }: {
@@ -495,41 +548,119 @@ function FillsView({
   );
 }
 
-function AuditTrail({ events }: { events: OrderAuditEvent[] }) {
+export function AuditTrail({ events }: { events: OrderAuditEvent[] }) {
   return (
     <div className="overflow-x-auto">
-      <div className="audit-grid min-w-[1080px]" role="table" aria-label="Paper order audit trail">
+      <div className="audit-grid min-w-[1420px]" role="table" aria-label="Paper order audit trail">
         <div className="audit-grid-row order-grid-head" role="row">
-          <span>Timestamp</span>
-          <span>Event</span>
+          <span>Time</span>
+          <span>Exch</span>
           <span>Contract</span>
+          <span>Message Type</span>
+          <span>ExecType</span>
           <span>B/S</span>
-          <span>Qty / Exe</span>
+          <span>OrdQty</span>
+          <span>FillQty</span>
           <span>Price</span>
           <span>Message</span>
           <span>Source</span>
+          <span>Order ID</span>
         </div>
         {events.map((event) => (
           <div className="audit-grid-row order-grid-entry" role="row" key={event.id}>
             <time dateTime={event.timestamp}>
               {format(new Date(event.timestamp), "MMM d HH:mm:ss.SSS")}
             </time>
-            <StatusBadge status={event.event} working={event.event === "STATUS"} />
+            <span className="text-[9px] font-semibold text-destructive">ALPACA</span>
             <strong>{event.symbol}</strong>
+            <span className="uppercase">{event.event}</span>
+            <StatusBadge status={event.status} working={event.event === "STATUS"} />
             <SideBadge side={event.side} />
-            <span className="tabular-nums">
-              {event.quantity} / {event.filled_quantity}
-            </span>
+            <span className="tabular-nums">{event.quantity}</span>
+            <span className="tabular-nums">{event.filled_quantity}</span>
             <span className="tabular-nums">{event.price ? money.format(event.price) : "—"}</span>
             <span>{event.message}</span>
             <span className="font-mono text-[9px] uppercase text-muted-foreground">
               {event.source.replaceAll("_", " ")}
             </span>
+            <span className="font-mono text-[9px]">{event.order_id}</span>
           </div>
         ))}
         {!events.length && <EmptyRow text="No audit messages match this symbol filter." />}
       </div>
     </div>
+  );
+}
+
+export function PositionBook({
+  positions,
+  accountID,
+}: {
+  positions: TradingPosition[];
+  accountID: string;
+}) {
+  const totalPL = positions.reduce((sum, position) => sum + position.unrealized_pl, 0);
+  const totalValue = positions.reduce((sum, position) => sum + position.market_value, 0);
+  return (
+    <div className="overflow-x-auto">
+      <div className="position-book min-w-[1040px]" role="table" aria-label="Account positions">
+        <div className="position-book-row order-grid-head" role="row">
+          <span>Account / Contract</span>
+          <span>Side</span>
+          <span>Quantity</span>
+          <span>Average price</span>
+          <span>Current mark</span>
+          <span>Today</span>
+          <span>Unrealized P/L</span>
+          <span>P/L %</span>
+          <span>Market value</span>
+        </div>
+        <div className="position-book-row position-account-row" role="row">
+          <strong>▾ {accountID.slice(0, 12)}…</strong>
+          <span>PAPER</span>
+          <span>{positions.length} positions</span>
+          <span>—</span>
+          <span>—</span>
+          <span>—</span>
+          <PLCell value={totalPL} />
+          <span>—</span>
+          <span className="tabular-nums">{money.format(totalValue)}</span>
+        </div>
+        {positions.map((position) => (
+          <div className="position-book-row order-grid-entry" role="row" key={position.symbol}>
+            <strong className="pl-4">└ {position.symbol}</strong>
+            <SideBadge side={position.side === "short" ? "sell" : "buy"} />
+            <span className="tabular-nums">{position.quantity.toLocaleString()}</span>
+            <span className="tabular-nums">{money.format(position.average_entry_price)}</span>
+            <span className="tabular-nums">{money.format(position.current_price)}</span>
+            <PLCell value={position.change_today} suffix="%" />
+            <PLCell value={position.unrealized_pl} currency />
+            <PLCell value={position.unrealized_pl_percent} suffix="%" />
+            <span className="tabular-nums">{money.format(position.market_value)}</span>
+          </div>
+        ))}
+        {!positions.length && <EmptyRow text="This account has no open positions." />}
+      </div>
+    </div>
+  );
+}
+
+function PLCell({
+  value,
+  currency = false,
+  suffix = "",
+}: {
+  value: number;
+  currency?: boolean;
+  suffix?: string;
+}) {
+  const text = currency
+    ? money.format(value)
+    : `${value >= 0 ? "+" : ""}${value.toFixed(2)}${suffix}`;
+  return (
+    <span className={`tt-pl-cell ${value >= 0 ? "tt-pl-positive" : "tt-pl-negative"}`}>
+      {value >= 0 ? "▲" : "▼"} {text}
+    </span>
   );
 }
 

@@ -75,6 +75,18 @@ const orderSchema = z.object({
   failed_at: z.string().optional(),
   working: z.boolean(),
   mode: z.literal("paper"),
+  signal: z
+    .object({
+      sentiment: z.enum(["POSITIVE", "NEUTRAL", "NEGATIVE"]),
+      sentiment_score: z.number().min(-1).max(1),
+      confidence: z.number().min(0).max(1),
+      price_direction: z.enum(["UP", "SIDEWAYS", "DOWN"]),
+      possibility: z.number().int().min(0).max(100),
+      analyzed_headlines: z.number().int().nonnegative(),
+      reason: z.string(),
+      sources: z.array(z.string()),
+    })
+    .optional(),
 });
 
 const fillSchema = z.object({

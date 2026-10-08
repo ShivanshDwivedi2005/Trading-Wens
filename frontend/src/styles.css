@@ -909,6 +909,38 @@ h3,
   border-radius: var(--radius);
   background: var(--card);
 }
+.account-execution-overview {
+  overflow: hidden;
+}
+.execution-titlebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--secondary) 70%, transparent), transparent);
+}
+.execution-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  padding: 7px 12px;
+  color: var(--muted-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+.terminal-inline-error {
+  border-left: 3px solid var(--destructive);
+  background: color-mix(in oklab, var(--destructive) 7%, transparent);
+  padding: 14px 16px;
+  color: var(--destructive);
+  font-size: 11px;
+}
 .terminal-toolbar {
   display: flex;
   flex-direction: column;
@@ -969,13 +1001,46 @@ h3,
   gap: 10px;
 }
 .order-grid-row {
-  grid-template-columns: 120px 80px 52px 105px 72px 72px 90px 120px 92px;
+  grid-template-columns: 120px 72px 48px 95px 68px 68px 84px 104px 92px 94px 76px minmax(270px, 1fr) 86px;
 }
 .fill-grid-row {
   grid-template-columns: 155px 76px 52px 72px 100px 100px 120px 100px;
 }
 .audit-grid-row {
-  grid-template-columns: 155px 110px 76px 52px 90px 90px minmax(280px, 1fr) 150px;
+  grid-template-columns: 150px 64px 84px 110px 112px 48px 68px 68px 86px minmax(260px, 1fr) 140px 270px;
+}
+.position-book-row {
+  display: grid;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  grid-template-columns: minmax(190px, 1fr) 62px 82px 110px 100px 92px 128px 92px 120px;
+}
+.position-account-row {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--secondary) 82%, var(--card));
+  padding: 5px 12px;
+  color: var(--foreground);
+  font-size: 10px;
+}
+.tt-pl-cell {
+  display: inline-flex;
+  min-height: 28px;
+  width: fit-content;
+  min-width: 76px;
+  align-items: center;
+  border-radius: 2px;
+  padding: 3px 7px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tt-pl-positive {
+  color: var(--background);
+  background: var(--chart-rise);
+}
+.tt-pl-negative {
+  color: var(--foreground);
+  background: var(--chart-fall);
 }
 .order-grid-head {
   min-height: 36px;
@@ -1004,7 +1069,9 @@ h3,
   font-size: 10px;
 }
 .side-badge,
-.order-status {
+.order-status,
+.signal-badge,
+.direction-cell {
   display: inline-flex;
   width: fit-content;
   min-height: 24px;
@@ -1016,6 +1083,34 @@ h3,
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+.signal-positive,
+.direction-up {
+  color: var(--chart-rise);
+  background: color-mix(in oklab, var(--chart-rise) 10%, transparent);
+}
+.signal-negative,
+.direction-down {
+  color: var(--chart-fall);
+  background: color-mix(in oklab, var(--chart-fall) 10%, transparent);
+}
+.signal-neutral,
+.direction-sideways {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 9%, transparent);
+}
+.direction-cell {
+  gap: 4px;
+}
+.signal-reason {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signal-reason:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 .side-buy {
   color: var(--primary);
@@ -1207,6 +1302,9 @@ h3,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .terminal-toolbar {
+    flex-direction: row;
+  }
+  .execution-titlebar {
     flex-direction: row;
     align-items: center;
   }

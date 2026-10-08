@@ -40,8 +40,18 @@ describe("trading API contracts", () => {
       updated_at: "2026-10-08T10:00:00Z",
       working: true,
       mode: "paper",
+      signal: {
+        sentiment: "POSITIVE",
+        sentiment_score: 0.62,
+        confidence: 0.84,
+        price_direction: "UP",
+        possibility: 75,
+        analyzed_headlines: 4,
+        reason: "Positive model-scored coverage supports an upward price bias.",
+        sources: ["gdelt news", "finbert sentiment"],
+      },
     };
-    expect(parsePaperOrder(order).mode).toBe("paper");
+    expect(parsePaperOrder(order).signal?.price_direction).toBe("UP");
     expect(() => parsePaperOrder({ ...order, mode: "live" })).toThrow();
   });
 
