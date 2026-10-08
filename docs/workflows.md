@@ -98,11 +98,14 @@ For illustration, an `NVDA` weight of 10.0% might move to 8.5% after a high-impa
 
 ## Paper-order monitoring
 
-The authenticated order monitor reads the configured Alpaca paper account only. It combines the latest order records with `FILL` account activities so a user can inspect three distinct views:
+The authenticated order monitor reads the configured Alpaca paper account only. After provider normalization, the backend persists the snapshot under the authenticated Google user and provider account before returning it. The Overview exposes four distinct views:
 
-- **Order Book** shows working and completed orders, submitted and executed quantities, limit or market price, current status, and cancellation for orders Alpaca still marks as working.
-- **Fills** shows execution time, quantity, fill price, the current open-position mark when available, and the signed mark delta. Mark delta is contextual information, not realized profit or loss.
+- **Positions** uses a hierarchical account/contract grid with quantity, average price, current mark, market value, signed daily change, and signed unrealized P/L.
+- **Working Order Book** shows submitted and executed quantities, price, current status, cancellation in the full monitor, and the stored model sentiment, direction, confidence, possibility, reason, and sources.
+- **Fill Book** shows execution time, quantity, fill price, the current open-position mark when available, and the signed mark delta. Mark delta is contextual information, not realized profit or loss.
 - **Audit Trail** orders submission, status, cancellation, rejection, expiration, and execution messages by provider timestamp. Every row identifies whether its source was the Alpaca order API or account-activity API.
+
+Profiles are created idempotently on the first authenticated Google session. The managed authentication schema is not modified. Position and account snapshots are retained once per minute, current positions are replaced transactionally by the database function, order state is idempotently updated, fills use provider IDs for deduplication, and audit events are append-only.
 
 The position outlook is a bounded directional scenario derived from current Alpaca unrealized P/L, today's mark movement, and confidence-weighted sentiment for matching Alpaca/GDELT headlines. It reports its score, confidence, reasons, and evidence sources. It is not presented as a guaranteed probability, exchange risk calculation, or investment recommendation.
 
