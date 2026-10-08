@@ -20,13 +20,14 @@ func RequireAuth(verifier SessionVerifier, next http.Handler) http.Handler {
 			return
 		}
 
-		if _, err := verifier.User(r.Context(), cookie.Value); err != nil {
+		user, err := verifier.User(r.Context(), cookie.Value)
+		if err != nil {
 			clearSessionCookie(w, r)
 			writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(domain.WithAuthenticatedUser(r.Context(), user)))
 	})
 }
 
@@ -43,7 +44,7 @@ func CORS(allowedOrigins []string, next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 			w.Header().Add("Vary", "Origin")
 		}
 

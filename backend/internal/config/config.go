@@ -15,6 +15,9 @@ import (
 type Config struct {
 	Address            string
 	FrontendURL        string
+	DatabaseURL        string
+	DatabaseServiceKey string
+	DatabaseTimeout    time.Duration
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -40,55 +43,77 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		Address:            valueOrDefault("BACKEND_ADDRESS", ":8080"),
-		FrontendURL:        strings.TrimRight(valueOrDefault("FRONTEND_URL", "http://localhost:3000"), "/"),
-		GoogleClientID:     strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_ID")),
-		GoogleClientSecret: strings.TrimSpace(os.Getenv("GOOGLE_CLIENT_SECRET")),
-		GoogleRedirectURL:  strings.TrimSpace(os.Getenv("GOOGLE_REDIRECT_URI")),
-		SessionSecret:      strings.TrimSpace(os.Getenv("JWT_ACCESS_SECRET")),
+		Address:     valueOrDefault("BACKEND_ADDRESS", ":8080"),
+		FrontendURL: strings.TrimRight(valueOrDefault("FRONTEND_URL", "http://localhost:3000"), "/"),
+		DatabaseURL: strings.TrimRight(firstValue("DATABASE_URL", "SUPABASE_URL"), "/"),
+		DatabaseServiceKey: firstValue(
+			"DATABASE_SECRET_KEY",
+			"DATABASE_SERVICE_KEY",
+			"SUPABASE_SECRET_KEY",
+			"SUPABASE_SERVICE_ROLE_KEY",
+		),
+		GoogleClientID:     firstValue("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: firstValue("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectURL:  firstValue("GOOGLE_OAUTH_REDIRECT_URI", "GOOGLE_REDIRECT_URI"),
+		SessionSecret:      firstValue("APP_SESSION_SIGNING_KEY", "JWT_ACCESS_SECRET"),
 		AlpacaDataURL:      strings.TrimRight(valueOrDefault("ALPACA_DATA_REST_URL", "https://data.alpaca.markets"), "/"),
 		AlpacaTradingURL:   valueOrDefault("ALPACA_TRADING_REST_URL", "https://paper-api.alpaca.markets"),
-		AlpacaAPIKeyID:     strings.TrimSpace(os.Getenv("ALPACA_API_KEY_ID")),
-		AlpacaAPISecretKey: strings.TrimSpace(os.Getenv("ALPACA_API_SECRET_KEY")),
+		AlpacaAPIKeyID:     firstValue("ALPACA_API_KEY", "ALPACA_API_KEY_ID"),
+		AlpacaAPISecretKey: firstValue("ALPACA_SECRET_KEY", "ALPACA_API_SECRET", "ALPACA_API_SECRET_KEY"),
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
 		GDELTAPIURL:        strings.TrimRight(valueOrDefault("GDELT_API_URL", "https://api.gdeltproject.org/api/v2/doc/doc"), "/"),
-		NLPAPIURL:          strings.TrimRight(valueOrDefault("NLP_API_URL", "http://127.0.0.1:8090"), "/"),
-		XAPIURL:            strings.TrimRight(valueOrDefault("X_API_URL", "https://api.x.com"), "/"),
-		XBearerToken:       strings.TrimSpace(os.Getenv("X_BEARER_TOKEN")),
+		NLPAPIURL:          strings.TrimRight(firstValue("FINBERT_INFERENCE_URL", "NLP_API_URL"), "/"),
+		XAPIURL:            strings.TrimRight(firstValue("X_API_BASE_URL", "X_API_URL"), "/"),
+		XBearerToken:       firstValue("X_API_BEARER_TOKEN", "X_BEARER_TOKEN"),
 		CORSAllowedOrigins: splitList(valueOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
+	}
+	if cfg.NLPAPIURL == "" {
+		cfg.NLPAPIURL = "http://127.0.0.1:8090"
+	}
+	if cfg.XAPIURL == "" {
+		cfg.XAPIURL = "https://api.x.com"
 	}
 
 	var missing []string
+	if cfg.DatabaseURL == "" {
+		missing = append(missing, "DATABASE_URL")
+	}
+	if cfg.DatabaseServiceKey == "" {
+		missing = append(missing, "DATABASE_SECRET_KEY")
+	}
 	if cfg.GoogleClientID == "" {
-		missing = append(missing, "GOOGLE_CLIENT_ID")
+		missing = append(missing, "GOOGLE_OAUTH_CLIENT_ID")
 	}
 	if cfg.GoogleClientSecret == "" {
-		missing = append(missing, "GOOGLE_CLIENT_SECRET")
+		missing = append(missing, "GOOGLE_OAUTH_CLIENT_SECRET")
 	}
 	if cfg.GoogleRedirectURL == "" {
-		missing = append(missing, "GOOGLE_REDIRECT_URI")
+		missing = append(missing, "GOOGLE_OAUTH_REDIRECT_URI")
 	}
 	if cfg.SessionSecret == "" {
-		missing = append(missing, "JWT_ACCESS_SECRET")
+		missing = append(missing, "APP_SESSION_SIGNING_KEY")
 	}
 	if cfg.AlpacaAPIKeyID == "" {
-		missing = append(missing, "ALPACA_API_KEY_ID")
+		missing = append(missing, "ALPACA_API_KEY")
 	}
 	if cfg.AlpacaAPISecretKey == "" {
-		missing = append(missing, "ALPACA_API_SECRET_KEY")
+		missing = append(missing, "ALPACA_SECRET_KEY")
 	}
 	if len(missing) > 0 {
 		return Config{}, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
 
 	if len(cfg.SessionSecret) < 32 {
-		return Config{}, errors.New("JWT_ACCESS_SECRET must contain at least 32 characters")
+		return Config{}, errors.New("APP_SESSION_SIGNING_KEY must contain at least 32 characters")
+	}
+	if !validHTTPURL(cfg.DatabaseURL) {
+		return Config{}, errors.New("DATABASE_URL must be the HTTP or HTTPS database API URL")
 	}
 	if !validHTTPURL(cfg.FrontendURL) {
 		return Config{}, errors.New("FRONTEND_URL must be an HTTP or HTTPS URL")
 	}
 	if !validHTTPURL(cfg.GoogleRedirectURL) {
-		return Config{}, errors.New("GOOGLE_REDIRECT_URI must be an HTTP or HTTPS URL")
+		return Config{}, errors.New("GOOGLE_OAUTH_REDIRECT_URI must be an HTTP or HTTPS URL")
 	}
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {
 		return Config{}, errors.New("ALPACA_DATA_REST_URL must be an HTTP or HTTPS URL")
@@ -102,18 +127,22 @@ func Load() (Config, error) {
 		return Config{}, errors.New("GDELT_API_URL must be an HTTP or HTTPS URL")
 	}
 	if !validHTTPURL(cfg.NLPAPIURL) {
-		return Config{}, errors.New("NLP_API_URL must be an HTTP or HTTPS URL")
+		return Config{}, errors.New("FINBERT_INFERENCE_URL must be an HTTP or HTTPS URL")
 	}
 	if !validHTTPURL(cfg.XAPIURL) {
-		return Config{}, errors.New("X_API_URL must be an HTTP or HTTPS URL")
+		return Config{}, errors.New("X_API_BASE_URL must be an HTTP or HTTPS URL")
 	}
-	xEnabled, err := strconv.ParseBool(valueOrDefault("X_ENABLED", "false"))
+	xEnabled, err := strconv.ParseBool(firstValue("X_API_ENABLED", "X_ENABLED"))
+	if firstValue("X_API_ENABLED", "X_ENABLED") == "" {
+		xEnabled = false
+		err = nil
+	}
 	if err != nil {
-		return Config{}, errors.New("X_ENABLED must be true or false")
+		return Config{}, errors.New("X_API_ENABLED must be true or false")
 	}
 	cfg.XEnabled = xEnabled
 	if cfg.XEnabled && cfg.XBearerToken == "" {
-		return Config{}, errors.New("X_BEARER_TOKEN is required when X_ENABLED is true")
+		return Config{}, errors.New("X_API_BEARER_TOKEN is required when X_API_ENABLED is true")
 	}
 	if !validAlpacaFeed(cfg.AlpacaDataFeed) {
 		return Config{}, fmt.Errorf("unsupported ALPACA_DATA_FEED %q", cfg.AlpacaDataFeed)
@@ -128,6 +157,11 @@ func Load() (Config, error) {
 		return Config{}, errors.New("NLP_REQUEST_TIMEOUT_SECONDS must be between 1 and 120")
 	}
 	cfg.NLPRequestTimeout = time.Duration(nlpTimeoutSeconds) * time.Second
+	databaseTimeoutSeconds, err := strconv.Atoi(valueOrDefault("DATABASE_REQUEST_TIMEOUT_SECONDS", "15"))
+	if err != nil || databaseTimeoutSeconds < 1 || databaseTimeoutSeconds > 60 {
+		return Config{}, errors.New("DATABASE_REQUEST_TIMEOUT_SECONDS must be between 1 and 60")
+	}
+	cfg.DatabaseTimeout = time.Duration(databaseTimeoutSeconds) * time.Second
 
 	return cfg, nil
 }

@@ -59,25 +59,37 @@ type OrderRequest struct {
 }
 
 type Order struct {
-	ID                 string     `json:"id"`
-	ClientOrderID      string     `json:"client_order_id"`
-	Symbol             string     `json:"symbol"`
-	Quantity           float64    `json:"quantity"`
-	FilledQuantity     float64    `json:"filled_quantity"`
-	FilledAveragePrice float64    `json:"filled_average_price,omitempty"`
-	Side               string     `json:"side"`
-	Type               string     `json:"type"`
-	TimeInForce        string     `json:"time_in_force"`
-	Status             string     `json:"status"`
-	LimitPrice         float64    `json:"limit_price,omitempty"`
-	SubmittedAt        time.Time  `json:"submitted_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	FilledAt           *time.Time `json:"filled_at,omitempty"`
-	CanceledAt         *time.Time `json:"canceled_at,omitempty"`
-	ExpiredAt          *time.Time `json:"expired_at,omitempty"`
-	FailedAt           *time.Time `json:"failed_at,omitempty"`
-	Working            bool       `json:"working"`
-	Mode               string     `json:"mode"`
+	ID                 string       `json:"id"`
+	ClientOrderID      string       `json:"client_order_id"`
+	Symbol             string       `json:"symbol"`
+	Quantity           float64      `json:"quantity"`
+	FilledQuantity     float64      `json:"filled_quantity"`
+	FilledAveragePrice float64      `json:"filled_average_price,omitempty"`
+	Side               string       `json:"side"`
+	Type               string       `json:"type"`
+	TimeInForce        string       `json:"time_in_force"`
+	Status             string       `json:"status"`
+	LimitPrice         float64      `json:"limit_price,omitempty"`
+	SubmittedAt        time.Time    `json:"submitted_at"`
+	UpdatedAt          time.Time    `json:"updated_at"`
+	FilledAt           *time.Time   `json:"filled_at,omitempty"`
+	CanceledAt         *time.Time   `json:"canceled_at,omitempty"`
+	ExpiredAt          *time.Time   `json:"expired_at,omitempty"`
+	FailedAt           *time.Time   `json:"failed_at,omitempty"`
+	Working            bool         `json:"working"`
+	Mode               string       `json:"mode"`
+	Signal             *OrderSignal `json:"signal,omitempty"`
+}
+
+type OrderSignal struct {
+	Sentiment         string   `json:"sentiment"`
+	SentimentScore    float64  `json:"sentiment_score"`
+	Confidence        float64  `json:"confidence"`
+	PriceDirection    string   `json:"price_direction"`
+	Possibility       int      `json:"possibility"`
+	AnalyzedHeadlines int      `json:"analyzed_headlines"`
+	Reason            string   `json:"reason"`
+	Sources           []string `json:"sources"`
 }
 
 type Fill struct {

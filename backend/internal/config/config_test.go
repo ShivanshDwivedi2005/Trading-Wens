@@ -40,8 +40,9 @@ func TestNormalizeAlpacaTradingURL(t *testing.T) {
 
 func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 	keys := []string{
-		"GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "JWT_ACCESS_SECRET",
-		"ALPACA_API_KEY_ID", "ALPACA_API_SECRET_KEY", "X_ENABLED", "X_BEARER_TOKEN",
+		"DATABASE_URL", "DATABASE_SECRET_KEY", "GOOGLE_OAUTH_CLIENT_ID",
+		"GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "APP_SESSION_SIGNING_KEY",
+		"ALPACA_API_KEY", "ALPACA_SECRET_KEY", "X_API_ENABLED", "X_API_BEARER_TOKEN",
 	}
 	previous := make(map[string]string, len(keys))
 	for _, key := range keys {
@@ -53,11 +54,12 @@ func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 		}
 	})
 	values := map[string]string{
-		"GOOGLE_CLIENT_ID": "client", "GOOGLE_CLIENT_SECRET": "secret",
-		"GOOGLE_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
-		"JWT_ACCESS_SECRET":   "12345678901234567890123456789012",
-		"ALPACA_API_KEY_ID":   "key", "ALPACA_API_SECRET_KEY": "secret",
-		"X_ENABLED": "true", "X_BEARER_TOKEN": "",
+		"DATABASE_URL": "https://project.supabase.co", "DATABASE_SECRET_KEY": "service-key",
+		"GOOGLE_OAUTH_CLIENT_ID": "client", "GOOGLE_OAUTH_CLIENT_SECRET": "secret",
+		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
+		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
+		"ALPACA_API_KEY":            "key", "ALPACA_SECRET_KEY": "secret",
+		"X_API_ENABLED": "true", "X_API_BEARER_TOKEN": "",
 	}
 	for key, value := range values {
 		if err := os.Setenv(key, value); err != nil {
@@ -65,7 +67,28 @@ func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 		}
 	}
 	_, err := Load()
-	if err == nil || err.Error() != "X_BEARER_TOKEN is required when X_ENABLED is true" {
+	if err == nil || err.Error() != "X_API_BEARER_TOKEN is required when X_API_ENABLED is true" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCanonicalEnvironmentNames(t *testing.T) {
+	values := map[string]string{
+		"DATABASE_URL": "https://project.supabase.co", "DATABASE_SECRET_KEY": "service-key",
+		"GOOGLE_OAUTH_CLIENT_ID": "client", "GOOGLE_OAUTH_CLIENT_SECRET": "secret",
+		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
+		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
+		"ALPACA_API_KEY":            "key", "ALPACA_SECRET_KEY": "secret",
+		"X_API_ENABLED": "false",
+	}
+	for key, value := range values {
+		t.Setenv(key, value)
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DatabaseServiceKey != "service-key" || cfg.AlpacaAPIKeyID != "key" {
+		t.Fatalf("canonical variables were not loaded: %#v", cfg)
 	}
 }

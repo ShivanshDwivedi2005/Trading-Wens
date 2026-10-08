@@ -61,7 +61,11 @@ func TestRequireAuth(t *testing.T) {
 		}
 		return domain.User{ID: "user-1"}, nil
 	}}
-	protected := RequireAuth(verifier, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	protected := RequireAuth(verifier, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := domain.AuthenticatedUser(r.Context())
+		if !ok || user.ID != "user-1" {
+			t.Fatalf("authenticated user was not added to request context: %#v", user)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
 

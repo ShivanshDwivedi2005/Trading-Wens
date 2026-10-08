@@ -28,13 +28,28 @@ type GoogleAuthService interface {
 	SessionTTL() time.Duration
 }
 
+type UserProfileStore interface {
+	EnsureUser(ctx context.Context, user domain.User) error
+}
+
 type GoogleAuthHandler struct {
 	service     GoogleAuthService
 	frontendURL string
+	profiles    UserProfileStore
 }
 
-func NewGoogleAuthHandler(service GoogleAuthService, frontendURL string) *GoogleAuthHandler {
-	return &GoogleAuthHandler{service: service, frontendURL: strings.TrimRight(frontendURL, "/")}
+func NewGoogleAuthHandler(
+	service GoogleAuthService,
+	frontendURL string,
+	profileStores ...UserProfileStore,
+) *GoogleAuthHandler {
+	var profiles UserProfileStore
+	if len(profileStores) > 0 {
+		profiles = profileStores[0]
+	}
+	return &GoogleAuthHandler{
+		service: service, frontendURL: strings.TrimRight(frontendURL, "/"), profiles: profiles,
+	}
 }
 
 func (h *GoogleAuthHandler) Start(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +102,12 @@ func (h *GoogleAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		h.redirectAuthError(w, r, "Google sign-in could not be completed")
 		return
 	}
+	if h.profiles != nil {
+		if err := h.profiles.EnsureUser(r.Context(), user); err != nil {
+			h.redirectAuthError(w, r, "Your application profile could not be prepared")
+			return
+		}
+	}
 	session, err := h.service.CreateSession(user)
 	if err != nil {
 		h.redirectAuthError(w, r, "A secure session could not be created")
@@ -116,6 +137,12 @@ func (h *GoogleAuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 		clearSessionCookie(w, r)
 		writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
 		return
+	}
+	if h.profiles != nil {
+		if err := h.profiles.EnsureUser(r.Context(), user); err != nil {
+			writeError(w, http.StatusServiceUnavailable, "database_unavailable", "Your profile is temporarily unavailable")
+			return
+		}
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, map[string]domain.User{"user": user})

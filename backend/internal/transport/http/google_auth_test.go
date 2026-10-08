@@ -15,6 +15,15 @@ type googleAuthStub struct {
 	exchange func(context.Context, string, string) (domain.User, error)
 }
 
+type profileStoreStub struct {
+	user domain.User
+}
+
+func (s *profileStoreStub) EnsureUser(_ context.Context, user domain.User) error {
+	s.user = user
+	return nil
+}
+
 func (s googleAuthStub) AuthorizationURL(state, challenge string) string {
 	return "https://accounts.google.com/auth?state=" + state + "&challenge=" + challenge
 }
@@ -55,7 +64,8 @@ func TestGoogleAuthCallbackCreatesSession(t *testing.T) {
 		}
 		return domain.User{ID: "user-1", Email: "analyst@example.com"}, nil
 	}}
-	handler := NewGoogleAuthHandler(service, "http://localhost:3000")
+	profiles := &profileStoreStub{}
+	handler := NewGoogleAuthHandler(service, "http://localhost:3000", profiles)
 	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=google-code&state=expected-state", nil)
 	req.AddCookie(&http.Cookie{Name: stateCookieName, Value: "expected-state"})
 	req.AddCookie(&http.Cookie{Name: verifierCookieName, Value: "pkce-verifier"})
@@ -72,6 +82,9 @@ func TestGoogleAuthCallbackCreatesSession(t *testing.T) {
 	}
 	if !sessionFound {
 		t.Fatal("expected secure application session cookie")
+	}
+	if profiles.user.ID != "user-1" {
+		t.Fatalf("profile was not provisioned: %#v", profiles.user)
 	}
 }
 

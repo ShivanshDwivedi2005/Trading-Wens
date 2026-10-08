@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -10,10 +11,12 @@ import (
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
 	newsservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/news"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/database"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/googleauth"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/nlp"
 	xprovider "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/x"
+	tradingservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/trading"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
 
@@ -23,6 +26,19 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Fatal(err)
+	}
+	databaseClient, err := database.NewClient(
+		cfg.DatabaseURL,
+		cfg.DatabaseServiceKey,
+		&http.Client{Timeout: cfg.DatabaseTimeout},
+	)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	startupContext, cancelStartup := context.WithTimeout(context.Background(), cfg.DatabaseTimeout)
+	defer cancelStartup()
+	if err := databaseClient.Ping(startupContext); err != nil {
+		logger.Fatalf("database is unavailable or migrations are missing: %v", err)
 	}
 
 	authClient, err := googleauth.NewClient(
@@ -36,7 +52,7 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	authHandler := httpapi.NewGoogleAuthHandler(authClient, cfg.FrontendURL)
+	authHandler := httpapi.NewGoogleAuthHandler(authClient, cfg.FrontendURL, databaseClient)
 	marketClient, err := alpaca.NewClient(
 		cfg.AlpacaDataURL,
 		cfg.AlpacaAPIKeyID,
@@ -58,7 +74,6 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	tradingHandler := httpapi.NewTradingHandler(tradingClient)
 	newsClient, err := gdelt.NewClient(cfg.GDELTAPIURL, market.SP500TopThirty, nil)
 	if err != nil {
 		logger.Fatal(err)
@@ -79,6 +94,8 @@ func main() {
 	}
 	newsService := newsservice.NewService([]newsservice.Provider{newsClient, alpacaNewsClient}, nlpClient)
 	newsHandler := httpapi.NewNewsHandler(newsService)
+	tradingService := tradingservice.NewService(tradingClient, databaseClient, newsService)
+	tradingHandler := httpapi.NewTradingHandler(tradingService)
 	var socialService httpapi.SocialService
 	if cfg.XEnabled {
 		xClient, err := xprovider.NewClient(cfg.XAPIURL, cfg.XBearerToken, market.SP500TopThirty, nil)
