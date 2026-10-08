@@ -61,19 +61,71 @@ const orderSchema = z.object({
   symbol: z.string(),
   quantity: z.number(),
   filled_quantity: z.number(),
+  filled_average_price: z.number().optional(),
   side: z.string(),
   type: z.string(),
   time_in_force: z.string(),
   status: z.string(),
   limit_price: z.number().optional(),
   submitted_at: z.string(),
+  updated_at: z.string(),
+  filled_at: z.string().optional(),
+  canceled_at: z.string().optional(),
+  expired_at: z.string().optional(),
+  failed_at: z.string().optional(),
+  working: z.boolean(),
   mode: z.literal("paper"),
+});
+
+const fillSchema = z.object({
+  id: z.string(),
+  order_id: z.string(),
+  symbol: z.string(),
+  side: z.string(),
+  quantity: z.number(),
+  cumulative_quantity: z.number(),
+  leaves_quantity: z.number(),
+  price: z.number(),
+  type: z.string(),
+  transaction_time: z.string(),
+  source: z.literal("alpaca"),
+  mode: z.literal("paper"),
+});
+
+const auditEventSchema = z.object({
+  id: z.string(),
+  order_id: z.string(),
+  symbol: z.string(),
+  timestamp: z.string(),
+  event: z.string(),
+  status: z.string(),
+  side: z.string(),
+  quantity: z.number(),
+  filled_quantity: z.number(),
+  price: z.number().optional(),
+  message: z.string(),
+  source: z.string(),
+});
+
+const orderMonitorSchema = z.object({
+  orders: z.array(orderSchema),
+  fills: z.array(fillSchema),
+  audit_trail: z.array(auditEventSchema),
+  as_of: z.string(),
+  source: z.literal("alpaca"),
+  mode: z.literal("paper"),
+  order_count: z.number().int().nonnegative(),
+  working_count: z.number().int().nonnegative(),
+  fill_count: z.number().int().nonnegative(),
 });
 
 export type TradingPosition = z.infer<typeof positionSchema>;
 export type TradingPortfolio = z.infer<typeof portfolioSchema>;
 export type TradingAsset = z.infer<typeof assetSchema>;
 export type PaperOrder = z.infer<typeof orderSchema>;
+export type PaperFill = z.infer<typeof fillSchema>;
+export type OrderAuditEvent = z.infer<typeof auditEventSchema>;
+export type OrderMonitor = z.infer<typeof orderMonitorSchema>;
 
 export type PaperOrderInput = {
   symbol: string;
@@ -90,6 +142,10 @@ export function parseTradingPortfolio(value: unknown): TradingPortfolio {
 
 export function parsePaperOrder(value: unknown): PaperOrder {
   return orderSchema.parse(value);
+}
+
+export function parseOrderMonitor(value: unknown): OrderMonitor {
+  return orderMonitorSchema.parse(value);
 }
 
 async function authorizedFetch(path: string, init?: RequestInit) {
@@ -122,4 +178,15 @@ export async function submitPaperOrder(input: PaperOrderInput): Promise<PaperOrd
     body: JSON.stringify(input),
   });
   return parsePaperOrder(await response.json());
+}
+
+export async function fetchOrderMonitor(): Promise<OrderMonitor> {
+  const response = await authorizedFetch("/api/v1/trading/orders");
+  return parseOrderMonitor(await response.json());
+}
+
+export async function cancelPaperOrder(orderID: string): Promise<void> {
+  await authorizedFetch(`/api/v1/trading/orders/${encodeURIComponent(orderID)}`, {
+    method: "DELETE",
+  });
 }

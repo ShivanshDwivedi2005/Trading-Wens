@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePaperOrder, parseTradingPortfolio } from "./trading-api";
+import { parseOrderMonitor, parsePaperOrder, parseTradingPortfolio } from "./trading-api";
 
 describe("trading API contracts", () => {
   it("accepts normalized Alpaca paper portfolio data", () => {
@@ -37,9 +37,41 @@ describe("trading API contracts", () => {
       time_in_force: "day",
       status: "accepted",
       submitted_at: "2026-10-08T10:00:00Z",
+      updated_at: "2026-10-08T10:00:00Z",
+      working: true,
       mode: "paper",
     };
     expect(parsePaperOrder(order).mode).toBe("paper");
     expect(() => parsePaperOrder({ ...order, mode: "live" })).toThrow();
+  });
+
+  it("accepts normalized orders, fills, and audit events", () => {
+    const result = parseOrderMonitor({
+      orders: [],
+      fills: [
+        {
+          id: "fill-1",
+          order_id: "order-1",
+          symbol: "AAPL",
+          side: "buy",
+          quantity: 1,
+          cumulative_quantity: 1,
+          leaves_quantity: 0,
+          price: 205,
+          type: "fill",
+          transaction_time: "2026-10-08T10:01:00Z",
+          source: "alpaca",
+          mode: "paper",
+        },
+      ],
+      audit_trail: [],
+      as_of: "2026-10-08T10:02:00Z",
+      source: "alpaca",
+      mode: "paper",
+      order_count: 0,
+      working_count: 0,
+      fill_count: 1,
+    });
+    expect(result.fills[0]?.price).toBe(205);
   });
 });

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ArrowRight, ExternalLink, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -255,10 +256,17 @@ export function LiveRiskFeed() {
                   </span>
                 </span>
                 <span className="tabular-nums">{risk.confidence}%</span>
-                <span className="flex items-center gap-2 text-xs">
-                  <ArrowRight size={13} className="text-primary" />
-                  {risk.action}
-                </span>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 justify-start px-2 text-xs"
+                >
+                  <Link to="/orders" search={{ symbol: position.symbol }}>
+                    <ArrowRight size={13} className="text-primary" />
+                    {risk.action}
+                  </Link>
+                </Button>
               </div>
             );
           })}
