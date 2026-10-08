@@ -171,15 +171,6 @@ create index if not exists audit_account_time_idx
 create index if not exists position_snapshots_account_time_idx
   on public.position_snapshots(user_id, provider_account_id, captured_at desc);
 
-alter table public.profiles enable row level security;
-alter table public.broker_accounts enable row level security;
-alter table public.account_snapshots enable row level security;
-alter table public.positions enable row level security;
-alter table public.position_snapshots enable row level security;
-alter table public.orders enable row level security;
-alter table public.fills enable row level security;
-alter table public.order_audit_events enable row level security;
-
 create or replace function public.sync_trading_state(
   p_user_id text,
   p_portfolio jsonb,
@@ -412,17 +403,7 @@ begin
 end;
 $$;
 
-revoke all on public.profiles from anon, authenticated;
-revoke all on public.broker_accounts from anon, authenticated;
-revoke all on public.account_snapshots from anon, authenticated;
-revoke all on public.positions from anon, authenticated;
-revoke all on public.position_snapshots from anon, authenticated;
-revoke all on public.orders from anon, authenticated;
-revoke all on public.fills from anon, authenticated;
-revoke all on public.order_audit_events from anon, authenticated;
-revoke all on function public.sync_trading_state(text, jsonb, jsonb) from public, anon, authenticated;
-revoke all on function public.get_trading_state(text, text, text) from public, anon, authenticated;
-grant execute on function public.sync_trading_state(text, jsonb, jsonb) to service_role;
-grant execute on function public.get_trading_state(text, text, text) to service_role;
+revoke all on function public.sync_trading_state(text, jsonb, jsonb) from public;
+revoke all on function public.get_trading_state(text, text, text) from public;
 
 commit;

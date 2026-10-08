@@ -6,13 +6,13 @@ Copy `.env.example` to `.env` and fill only the values for services you run. Kee
 
 ### Database persistence
 
-- `DATABASE_URL`: the HTTPS project URL from Supabase **Project Settings → API**. This is the project API URL (for example `https://project-ref.supabase.co`), not a browser key and not a PostgreSQL connection string.
-- `DATABASE_SECRET_KEY`: create or copy a server-side secret key from **Settings → API Keys**. A legacy `service_role` key is also accepted through the compatibility aliases, but new Supabase projects should use a secret key. Never put this value in `frontend/.env`, a `VITE_*` variable, browser code, screenshots, or Git.
-- `DATABASE_REQUEST_TIMEOUT_SECONDS`: maximum duration of profile and trading-ledger writes. The default is 15 seconds.
+- `DATABASE_URL`: copy the pooled PostgreSQL connection string from the Neon dashboard's **Connect** dialog. Keep it server-side because it contains the database password.
+- `DATABASE_CONNECT_TIMEOUT_SECONDS`: maximum startup connection time. The default is 15 seconds.
+- `DATABASE_MIN_CONNECTIONS` and `DATABASE_MAX_CONNECTIONS`: backend pool limits. Defaults are 1 and 10.
 
-Before starting the API, run `backend/migrations/001_trading_ledger.sql` once in the Supabase SQL Editor. The backend performs a startup check and refuses to serve authenticated trading data when the schema or database credentials are unavailable.
+Before starting the API, run `backend/migrations/001_trading_ledger.sql` once in the Neon SQL Editor. The backend performs a startup check and refuses to serve authenticated trading data when the schema or database credentials are unavailable.
 
-The migration creates Google-authenticated application profiles without modifying Supabase's managed `auth` schema. All order, fill, audit, account, and position rows are scoped by the Google user ID and provider account ID. A provider account can be owned by only one application user, preventing the globally configured paper account from being exposed through another login. Current positions are upserted, position/account history is sampled once per minute, fills are idempotent, and audit events are append-only.
+The migration creates Google-authenticated application profiles without modifying an external authentication schema. All order, fill, audit, account, and position rows are scoped by the Google user ID and provider account ID. A provider account can be owned by only one application user, preventing the globally configured paper account from being exposed through another login. Current positions are upserted, position/account history is sampled once per minute, fills are idempotent, and audit events are append-only.
 
 The current Alpaca Trading API integration connects one paper account through server environment variables. Supporting independent Alpaca accounts for multiple application users requires a provider account-connection flow (Alpaca OAuth or Broker API); do not copy one account's API keys into multiple user records.
 
@@ -72,4 +72,4 @@ X posts remain a separate social feed. They are not included in news sentiment u
 - `AUTH_SESSION_TTL_SECONDS`: signed application session lifetime from 300 seconds to seven days.
 - `VITE_API_BASE_URL`: optional browser-visible backend origin when frontend and backend are deployed separately.
 
-The backend temporarily accepts the previous Google, Alpaca, NLP, X, and Supabase variable names as aliases so existing local environments keep working. New deployments should use the canonical names in `.env.example`.
+The backend temporarily accepts previous Google, Alpaca, NLP, and X variable names as aliases so existing local environments keep working. New deployments should use the canonical names in `.env.example`.

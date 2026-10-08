@@ -43,7 +43,7 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
 - Google OpenID Connect authentication with signed HTTP-only sessions
-- Go backend with Google OAuth, Supabase persistence, Alpaca market/trading/news APIs, GDELT news, and X recent search
+- Go backend with Google OAuth, Neon PostgreSQL persistence, Alpaca market/trading/news APIs, GDELT news, and X recent search
 - Python FinBERT inference service backed by the trained Trading Wens sentiment checkpoint
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.

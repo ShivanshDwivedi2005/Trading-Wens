@@ -40,7 +40,7 @@ func TestNormalizeAlpacaTradingURL(t *testing.T) {
 
 func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 	keys := []string{
-		"DATABASE_URL", "DATABASE_SECRET_KEY", "GOOGLE_OAUTH_CLIENT_ID",
+		"DATABASE_URL", "GOOGLE_OAUTH_CLIENT_ID",
 		"GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "APP_SESSION_SIGNING_KEY",
 		"ALPACA_API_KEY", "ALPACA_SECRET_KEY", "X_API_ENABLED", "X_API_BEARER_TOKEN",
 	}
@@ -54,7 +54,7 @@ func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 		}
 	})
 	values := map[string]string{
-		"DATABASE_URL": "https://project.supabase.co", "DATABASE_SECRET_KEY": "service-key",
+		"DATABASE_URL":           "postgresql://user:password@host.neon.tech/trading?sslmode=require",
 		"GOOGLE_OAUTH_CLIENT_ID": "client", "GOOGLE_OAUTH_CLIENT_SECRET": "secret",
 		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
 		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
@@ -74,7 +74,7 @@ func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
 
 func TestCanonicalEnvironmentNames(t *testing.T) {
 	values := map[string]string{
-		"DATABASE_URL": "https://project.supabase.co", "DATABASE_SECRET_KEY": "service-key",
+		"DATABASE_URL":           "postgresql://user:password@host.neon.tech/trading?sslmode=require",
 		"GOOGLE_OAUTH_CLIENT_ID": "client", "GOOGLE_OAUTH_CLIENT_SECRET": "secret",
 		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
 		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
@@ -88,7 +88,16 @@ func TestCanonicalEnvironmentNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.DatabaseServiceKey != "service-key" || cfg.AlpacaAPIKeyID != "key" {
+	if cfg.DatabaseMaxConns != 10 || cfg.AlpacaAPIKeyID != "key" {
 		t.Fatalf("canonical variables were not loaded: %#v", cfg)
+	}
+}
+
+func TestValidPostgresURL(t *testing.T) {
+	if !validPostgresURL("postgresql://user:password@host.neon.tech/trading?sslmode=require") {
+		t.Fatal("expected Neon connection string to be valid")
+	}
+	if validPostgresURL("https://database.example.com") {
+		t.Fatal("expected HTTP database URL to be rejected")
 	}
 }

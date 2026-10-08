@@ -16,8 +16,9 @@ type Config struct {
 	Address            string
 	FrontendURL        string
 	DatabaseURL        string
-	DatabaseServiceKey string
 	DatabaseTimeout    time.Duration
+	DatabaseMinConns   int32
+	DatabaseMaxConns   int32
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -43,15 +44,9 @@ func Load() (Config, error) {
 	}
 
 	cfg := Config{
-		Address:     valueOrDefault("BACKEND_ADDRESS", ":8080"),
-		FrontendURL: strings.TrimRight(valueOrDefault("FRONTEND_URL", "http://localhost:3000"), "/"),
-		DatabaseURL: strings.TrimRight(firstValue("DATABASE_URL", "SUPABASE_URL"), "/"),
-		DatabaseServiceKey: firstValue(
-			"DATABASE_SECRET_KEY",
-			"DATABASE_SERVICE_KEY",
-			"SUPABASE_SECRET_KEY",
-			"SUPABASE_SERVICE_ROLE_KEY",
-		),
+		Address:            valueOrDefault("BACKEND_ADDRESS", ":8080"),
+		FrontendURL:        strings.TrimRight(valueOrDefault("FRONTEND_URL", "http://localhost:3000"), "/"),
+		DatabaseURL:        firstValue("DATABASE_URL"),
 		GoogleClientID:     firstValue("GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: firstValue("GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURL:  firstValue("GOOGLE_OAUTH_REDIRECT_URI", "GOOGLE_REDIRECT_URI"),
@@ -78,9 +73,6 @@ func Load() (Config, error) {
 	if cfg.DatabaseURL == "" {
 		missing = append(missing, "DATABASE_URL")
 	}
-	if cfg.DatabaseServiceKey == "" {
-		missing = append(missing, "DATABASE_SECRET_KEY")
-	}
 	if cfg.GoogleClientID == "" {
 		missing = append(missing, "GOOGLE_OAUTH_CLIENT_ID")
 	}
@@ -106,8 +98,8 @@ func Load() (Config, error) {
 	if len(cfg.SessionSecret) < 32 {
 		return Config{}, errors.New("APP_SESSION_SIGNING_KEY must contain at least 32 characters")
 	}
-	if !validHTTPURL(cfg.DatabaseURL) {
-		return Config{}, errors.New("DATABASE_URL must be the HTTP or HTTPS database API URL")
+	if !validPostgresURL(cfg.DatabaseURL) {
+		return Config{}, errors.New("DATABASE_URL must be a PostgreSQL connection string")
 	}
 	if !validHTTPURL(cfg.FrontendURL) {
 		return Config{}, errors.New("FRONTEND_URL must be an HTTP or HTTPS URL")
@@ -157,11 +149,21 @@ func Load() (Config, error) {
 		return Config{}, errors.New("NLP_REQUEST_TIMEOUT_SECONDS must be between 1 and 120")
 	}
 	cfg.NLPRequestTimeout = time.Duration(nlpTimeoutSeconds) * time.Second
-	databaseTimeoutSeconds, err := strconv.Atoi(valueOrDefault("DATABASE_REQUEST_TIMEOUT_SECONDS", "15"))
+	databaseTimeoutSeconds, err := strconv.Atoi(valueOrDefault("DATABASE_CONNECT_TIMEOUT_SECONDS", "15"))
 	if err != nil || databaseTimeoutSeconds < 1 || databaseTimeoutSeconds > 60 {
-		return Config{}, errors.New("DATABASE_REQUEST_TIMEOUT_SECONDS must be between 1 and 60")
+		return Config{}, errors.New("DATABASE_CONNECT_TIMEOUT_SECONDS must be between 1 and 60")
 	}
 	cfg.DatabaseTimeout = time.Duration(databaseTimeoutSeconds) * time.Second
+	databaseMinConnections, err := strconv.Atoi(valueOrDefault("DATABASE_MIN_CONNECTIONS", "1"))
+	if err != nil || databaseMinConnections < 0 {
+		return Config{}, errors.New("DATABASE_MIN_CONNECTIONS must be zero or greater")
+	}
+	databaseMaxConnections, err := strconv.Atoi(valueOrDefault("DATABASE_MAX_CONNECTIONS", "10"))
+	if err != nil || databaseMaxConnections < 1 || databaseMaxConnections < databaseMinConnections {
+		return Config{}, errors.New("DATABASE_MAX_CONNECTIONS must be at least DATABASE_MIN_CONNECTIONS")
+	}
+	cfg.DatabaseMinConns = int32(databaseMinConnections)
+	cfg.DatabaseMaxConns = int32(databaseMaxConnections)
 
 	return cfg, nil
 }
@@ -169,6 +171,12 @@ func Load() (Config, error) {
 func validHTTPURL(value string) bool {
 	parsed, err := url.Parse(value)
 	return err == nil && parsed.Host != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
+}
+
+func validPostgresURL(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Host != "" && parsed.User != nil &&
+		(parsed.Scheme == "postgres" || parsed.Scheme == "postgresql")
 }
 
 func normalizeAlpacaTradingURL(value string) (string, error) {

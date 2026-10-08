@@ -10,7 +10,7 @@ From this directory:
 go run ./cmd/api
 ```
 
-The service loads local settings from `../frontend/.env` and `../.env` without overriding environment variables supplied by the process. Apply `migrations/001_trading_ledger.sql`, then configure `DATABASE_URL`, `DATABASE_SECRET_KEY`, Google OAuth, the application signing key, and Alpaca credentials. Start the Python model service from `../ml` so `FINBERT_INFERENCE_URL` is reachable. To load live X posts, also set `X_API_ENABLED=true` and `X_API_BEARER_TOKEN`. Acquisition steps for every setting are documented in `../docs/configuration.md`.
+The service loads local settings from `../frontend/.env` and `../.env` without overriding environment variables supplied by the process. Apply `migrations/001_trading_ledger.sql` to Neon, then configure its PostgreSQL `DATABASE_URL`, Google OAuth, the application signing key, and Alpaca credentials. Start the Python model service from `../ml` so `FINBERT_INFERENCE_URL` is reachable. To load live X posts, also set `X_API_ENABLED=true` and `X_API_BEARER_TOKEN`. Acquisition steps for every setting are documented in `../docs/configuration.md`.
 
 The frontend development server proxies `/api` to `http://127.0.0.1:8080`. Deployed environments can set `VITE_API_BASE_URL` when the API uses a separate origin and must include that origin in `CORS_ALLOWED_ORIGINS`.
 

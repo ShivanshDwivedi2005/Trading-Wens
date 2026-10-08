@@ -27,16 +27,13 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	databaseClient, err := database.NewClient(
-		cfg.DatabaseURL,
-		cfg.DatabaseServiceKey,
-		&http.Client{Timeout: cfg.DatabaseTimeout},
-	)
+	startupContext, cancelStartup := context.WithTimeout(context.Background(), cfg.DatabaseTimeout)
+	defer cancelStartup()
+	databaseClient, err := database.NewClient(startupContext, cfg.DatabaseURL, cfg.DatabaseMinConns, cfg.DatabaseMaxConns)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	startupContext, cancelStartup := context.WithTimeout(context.Background(), cfg.DatabaseTimeout)
-	defer cancelStartup()
+	defer databaseClient.Close()
 	if err := databaseClient.Ping(startupContext); err != nil {
 		logger.Fatalf("database is unavailable or migrations are missing: %v", err)
 	}
