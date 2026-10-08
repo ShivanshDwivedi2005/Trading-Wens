@@ -52,7 +52,7 @@ paths:
         - cookieAuth: []
       responses:
         "200":
-          description: Recent normalized GDELT articles in descending publication order
+          description: Recent normalized Alpaca and GDELT articles with calibrated model sentiment
           content:
             application/json:
               schema:
@@ -369,7 +369,7 @@ components:
         mode: { type: string, const: paper }
     NewsFeedResponse:
       type: object
-      required: [data, as_of, source, count]
+      required: [data, as_of, source, providers, count]
       properties:
         data:
           type: array
@@ -380,7 +380,11 @@ components:
           format: date-time
         source:
           type: string
-          const: gdelt
+          const: aggregated
+        providers:
+          type: array
+          items:
+            type: string
         count:
           type: integer
           minimum: 0
@@ -391,6 +395,7 @@ components:
         - title
         - url
         - domain
+        - provider
         - published_at
         - language
         - source_country
@@ -400,10 +405,14 @@ components:
           type: string
         title:
           type: string
+        summary:
+          type: string
         url:
           type: string
           format: uri
         domain:
+          type: string
+        provider:
           type: string
         published_at:
           type: string
@@ -419,6 +428,47 @@ components:
           type: array
           items:
             type: string
+        sentiment:
+          $ref: "#/components/schemas/NewsSentiment"
+    NewsSentiment:
+      type: object
+      required:
+        [
+          label,
+          score,
+          confidence,
+          uncertainty,
+          probabilities,
+          model,
+          model_version,
+        ]
+      properties:
+        label:
+          type: string
+          enum: [NEGATIVE, NEUTRAL, POSITIVE]
+        score:
+          type: number
+          minimum: -1
+          maximum: 1
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        uncertainty:
+          type: number
+          minimum: 0
+          maximum: 1
+        probabilities:
+          type: object
+          required: [NEGATIVE, NEUTRAL, POSITIVE]
+          properties:
+            NEGATIVE: { type: number, minimum: 0, maximum: 1 }
+            NEUTRAL: { type: number, minimum: 0, maximum: 1 }
+            POSITIVE: { type: number, minimum: 0, maximum: 1 }
+        model:
+          type: string
+        model_version:
+          type: string
     SocialFeedResponse:
       type: object
       required: [data, as_of, source, symbol, count]

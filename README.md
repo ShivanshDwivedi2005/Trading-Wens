@@ -9,6 +9,7 @@ Trading Wens is a market-intelligence platform for exploring live large-cap mark
 ├── backend/             # Go API and provider integrations
 ├── docs/                # Architecture notes and delivery roadmap
 ├── frontend/            # TanStack Start web application
+├── ml/                  # Python sentiment inference service (weights stay external)
 └── package.json         # Workspace commands
 ```
 
@@ -27,7 +28,7 @@ cd ..
 pnpm dev
 ```
 
-Configure the Google OAuth web client and server-side provider values in `.env`. The registered Google redirect URI must exactly match `GOOGLE_REDIRECT_URI`; locally it is `http://localhost:8080/auth/google/callback`. Credentials remain server-only, while the browser receives only a signed HTTP-only application session cookie.
+Configure the Google OAuth web client, provider credentials, and trained checkpoint path in `.env`. The registered Google redirect URI must exactly match `GOOGLE_REDIRECT_URI`; locally it is `http://localhost:8080/auth/google/callback`. Start the Python model service before the Go API. Credentials remain server-only, while the browser receives only a signed HTTP-only application session cookie. See [runtime configuration](docs/configuration.md) for every variable and where to obtain it.
 
 ## Quality checks
 
@@ -42,8 +43,9 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
 - Google OpenID Connect authentication with signed HTTP-only sessions
-- Go backend with Google OAuth, Alpaca snapshots and bars, GDELT news, and X recent search
+- Go backend with Google OAuth, Alpaca market/trading/news APIs, GDELT news, and X recent search
+- Python FinBERT inference service backed by the trained Trading Wens sentiment checkpoint
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 
-The authenticated workspace uses the configured Alpaca paper account for its overview, position-risk feed, portfolio-risk status, searchable asset list, live candlesticks, and confirmed paper orders. GDELT supplies current company coverage. When `X_ENABLED=true`, the X recent-search API is the only social source and supplies per-stock market conversation. News and X text sentiment is intentionally labelled as a temporary keyword heuristic until the trained model is connected; simulated monitoring stays visibly separated from provider data.
+The authenticated workspace uses the configured Alpaca paper account for its overview, position-risk feed, portfolio-risk status, searchable asset list, live candlesticks, confirmed paper orders, and news. GDELT adds global company coverage. The backend deduplicates the combined news feed and enriches every available headline with calibrated sentiment from the trained model. When `X_ENABLED=true`, the X recent-search API is the separate social source and supplies per-stock market conversation. Simulated monitoring stays visibly separated from provider data.
