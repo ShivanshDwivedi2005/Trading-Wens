@@ -22,7 +22,7 @@ const socialPostSchema = z.object({
 const socialFeedSchema = z.object({
   data: z.array(socialPostSchema),
   as_of: z.string(),
-  source: z.literal("x"),
+  source: z.literal("bluesky"),
   symbol: z.string(),
   count: z.number().int().nonnegative(),
 });
@@ -39,9 +39,9 @@ export async function fetchSocialPosts(symbol: string): Promise<SocialFeedRespon
   const response = await authenticatedFetch(`/api/v1/social?${params}`);
   if (!response.ok) {
     if (response.status === 503) {
-      throw new Error("Add an X bearer token to enable live market conversation.");
+      throw new Error("Bluesky market conversation is disabled by the server.");
     }
-    throw new Error("X market conversation is temporarily unavailable.");
+    throw new Error("Bluesky market conversation is temporarily unavailable.");
   }
   return parseSocialFeed(await response.json());
 }

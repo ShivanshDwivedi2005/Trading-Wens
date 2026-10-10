@@ -325,8 +325,9 @@ export function LiveTrading() {
               <Insight label="Best action" value={sentiment.action} />
             </div>
             <p className="mt-4 text-[10px] leading-4 text-muted-foreground">
-              Aggregated from {sentiment.count} model-scored news headlines. X posts remain separate
-              provider context and are not included in this score. This is not investment advice.
+              Aggregated from {sentiment.count} model-scored news headlines. Bluesky posts remain
+              separate provider context and are not included in this score. This is not investment
+              advice.
             </p>
           </div>
           <div>
@@ -350,11 +351,11 @@ export function LiveTrading() {
             </div>
           </div>
           <div>
-            <div className="label text-muted-foreground">LATEST X POSTS</div>
+            <div className="label text-muted-foreground">LATEST BLUESKY POSTS</div>
             <div className="mt-3 divide-y divide-border" aria-busy={social.isPending}>
               {social.isPending &&
                 Array.from({ length: 3 }, (_, index) => (
-                  <div className="py-3" key={`x-loading-${index}`}>
+                  <div className="py-3" key={`bluesky-loading-${index}`}>
                     <div className="h-3 animate-pulse rounded bg-secondary" />
                     <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-secondary" />
                   </div>
@@ -370,7 +371,7 @@ export function LiveTrading() {
                   <span className="line-clamp-2">{post.text}</span>
                   <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
                     <span>
-                      {post.username ? `@${post.username}` : post.author_name || "X user"}
+                      {post.username ? `@${post.username}` : post.author_name || "Bluesky user"}
                     </span>
                     <time dateTime={post.created_at}>
                       {formatDistanceToNowStrict(new Date(post.created_at), { addSuffix: true })}
@@ -385,7 +386,7 @@ export function LiveTrading() {
               )}
               {!social.isPending && !social.error && !social.data?.data.length && (
                 <div className="py-5 text-xs text-muted-foreground">
-                  No recent X posts found for {selected.symbol}.
+                  No recent Bluesky posts found for {selected.symbol}.
                 </div>
               )}
             </div>

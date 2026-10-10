@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { parseSocialFeed } from "./social-api";
 
 describe("social feed contract", () => {
-  it("accepts a normalized X response", () => {
+  it("accepts a normalized Bluesky response", () => {
     const result = parseSocialFeed({
       data: [
         {
-          id: "199",
+          id: "at://did:plc:market/app.bsky.feed.post/3abc",
           text: "Apple reports stronger demand",
-          url: "https://x.com/marketdesk/status/199",
+          url: "https://bsky.app/profile/marketdesk.bsky.social/post/3abc",
           author_name: "Market Desk",
-          username: "marketdesk",
+          username: "marketdesk.bsky.social",
           created_at: "2026-10-08T08:30:00Z",
           language: "en",
           matched_symbol: "AAPL",
@@ -18,14 +18,14 @@ describe("social feed contract", () => {
         },
       ],
       as_of: "2026-10-08T08:31:00Z",
-      source: "x",
+      source: "bluesky",
       symbol: "AAPL",
       count: 1,
     });
-    expect(result.data[0]?.username).toBe("marketdesk");
+    expect(result.data[0]?.username).toBe("marketdesk.bsky.social");
   });
 
   it("rejects malformed responses", () => {
-    expect(() => parseSocialFeed({ source: "x" })).toThrow();
+    expect(() => parseSocialFeed({ source: "bluesky" })).toThrow();
   });
 });
