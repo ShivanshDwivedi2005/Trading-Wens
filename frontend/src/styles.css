@@ -42,6 +42,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-profit: var(--profit);
+  --color-loss: var(--loss);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -81,6 +83,8 @@
   --accent-foreground: oklch(0.13 0 0);
   --destructive: oklch(0.65 0.2 26);
   --destructive-foreground: oklch(0.97 0 0);
+  --profit: oklch(0.72 0.17 152);
+  --loss: oklch(0.68 0.2 26);
   --border: oklch(0.31 0 0 / 62%);
   --input: oklch(0.32 0 0);
   --ring: oklch(0.78 0.12 80);
@@ -98,8 +102,8 @@
   --sidebar-border: oklch(0.28 0 0);
   --sidebar-ring: oklch(0.78 0.12 80);
   --chart-grid: oklch(0.55 0 0 / 23%);
-  --chart-rise: oklch(0.7 0.17 157 / 92%);
-  --chart-fall: oklch(0.68 0.2 26 / 92%);
+  --chart-rise: var(--profit);
+  --chart-fall: var(--loss);
   --chart-axis: oklch(0.8 0.08 84 / 48%);
 }
 
@@ -143,6 +147,32 @@
   from {
     opacity: 0;
     transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes broadcast-scan {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(220%);
+  }
+}
+@keyframes broadcast-crawl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-38%);
+  }
+}
+@keyframes landing-scroll-rise {
+  from {
+    opacity: 0.25;
+    transform: translateY(72px);
   }
   to {
     opacity: 1;
@@ -209,8 +239,222 @@ h3,
 .live-pulse {
   animation: pulse-live 2s ease-in-out infinite;
 }
-.landing-header {
+.landing-video-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 78% 24%,
+      color-mix(in oklab, var(--primary) 11%, transparent),
+      transparent 34%
+    ),
+    var(--background);
+  pointer-events: none;
+}
+.landing-video-background::after {
   position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(
+    180deg,
+    transparent 35%,
+    color-mix(in oklab, var(--background) 52%, transparent)
+  );
+}
+.landing > main {
+  position: relative;
+  z-index: 10;
+}
+.broadcast-screen {
+  position: absolute;
+  top: clamp(120px, 17vh, 180px);
+  right: clamp(32px, 6vw, 110px);
+  width: min(44vw, 680px);
+  min-width: 460px;
+  height: min(48vh, 430px);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--foreground) 24%, transparent);
+  border-radius: 8px;
+  background:
+    linear-gradient(140deg, color-mix(in oklab, var(--primary) 10%, transparent), transparent 58%),
+    color-mix(in oklab, var(--background) 78%, transparent);
+  box-shadow:
+    0 35px 100px color-mix(in oklab, black 72%, transparent),
+    inset 0 0 60px color-mix(in oklab, var(--primary) 5%, transparent);
+  opacity: 0.72;
+  transform: perspective(1100px) rotateY(-7deg) rotateX(1.5deg);
+}
+.broadcast-screen::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, white 9%, transparent),
+    transparent
+  );
+  animation: broadcast-scan 5.5s linear infinite;
+}
+.broadcast-topline,
+.broadcast-lower-third,
+.broadcast-ticker {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+}
+.broadcast-topline {
+  height: 46px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 0 18px;
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 700;
+}
+.broadcast-live {
+  border-radius: 3px;
+  background: var(--loss);
+  padding: 4px 7px;
+  color: white;
+  font-size: 8px;
+}
+.broadcast-stage {
+  display: grid;
+  height: calc(100% - 122px);
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: end;
+  gap: 20px;
+  padding: 24px 24px 18px;
+  background:
+    linear-gradient(
+      110deg,
+      color-mix(in oklab, var(--background) 16%, transparent),
+      color-mix(in oklab, var(--primary) 7%, transparent)
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 52px,
+      color-mix(in oklab, var(--foreground) 4%, transparent) 53px
+    );
+}
+.broadcast-anchor {
+  position: relative;
+  height: 88%;
+}
+.broadcast-head,
+.broadcast-body {
+  position: absolute;
+  left: 50%;
+  display: block;
+  transform: translateX(-50%);
+  background: color-mix(in oklab, var(--foreground) 14%, var(--background));
+}
+.broadcast-head {
+  top: 4%;
+  width: 54px;
+  height: 65px;
+  border-radius: 48% 48% 42% 42%;
+}
+.broadcast-body {
+  bottom: -20px;
+  width: 148px;
+  height: 150px;
+  border-radius: 52% 52% 4px 4px;
+}
+.broadcast-copy {
+  align-self: center;
+  border-left: 2px solid var(--primary);
+  padding-left: 18px;
+}
+.broadcast-copy span,
+.broadcast-copy strong,
+.broadcast-copy small {
+  display: block;
+}
+.broadcast-copy span {
+  color: var(--primary);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+.broadcast-copy strong {
+  margin-top: 10px;
+  max-width: 300px;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.2vw, 30px);
+  line-height: 1.15;
+}
+.broadcast-copy small {
+  margin-top: 12px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.broadcast-lower-third {
+  position: absolute;
+  inset: auto 0 28px;
+  height: 48px;
+  background: color-mix(in oklab, var(--background) 88%, transparent);
+  font-size: 9px;
+}
+.broadcast-lower-third strong {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  background: var(--loss);
+  padding: 0 16px;
+  color: white;
+}
+.broadcast-lower-third span {
+  padding: 0 16px;
+}
+.broadcast-ticker {
+  position: absolute;
+  inset: auto 0 0;
+  width: 160%;
+  height: 28px;
+  gap: 28px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 8px;
+  white-space: nowrap;
+  animation: broadcast-crawl 12s linear infinite;
+}
+.broadcast-projection {
+  position: absolute;
+  top: 32vh;
+  right: -2vw;
+  width: 58vw;
+  height: 38vh;
+  border-top: 1px solid color-mix(in oklab, var(--profit) 28%, transparent);
+  background: linear-gradient(
+    110deg,
+    transparent 10%,
+    color-mix(in oklab, var(--profit) 4%, transparent)
+  );
+  filter: blur(0.2px);
+  transform: skewY(-4deg);
+}
+.broadcast-paused *,
+.broadcast-paused::after {
+  animation-play-state: paused !important;
+}
+.landing-motion-toggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  width: 44px;
+  height: 44px;
+  border-color: color-mix(in oklab, var(--foreground) 22%, transparent);
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  backdrop-filter: blur(14px);
+}
+.landing-header {
+  position: fixed;
   inset: 0 0 auto;
   z-index: 30;
   display: flex;
@@ -245,7 +489,7 @@ h3,
       90deg,
       var(--background) 0%,
       color-mix(in oklab, var(--background) 80%, transparent) 40%,
-      color-mix(in oklab, var(--background) 18%, transparent) 80%
+      color-mix(in oklab, var(--background) 12%, transparent) 80%
     ),
     linear-gradient(
       0deg,
@@ -253,6 +497,32 @@ h3,
       transparent 24%,
       color-mix(in oklab, var(--background) 30%, transparent) 100%
     );
+}
+.landing-scroll-section {
+  position: relative;
+  min-height: 64vh;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--background) 74%, transparent),
+    color-mix(in oklab, var(--background) 48%, transparent) 50%,
+    color-mix(in oklab, var(--background) 78%, transparent)
+  );
+  backdrop-filter: blur(2px);
+}
+.landing-scroll-section .bg-background {
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  backdrop-filter: blur(12px);
+}
+.landing-footer {
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(12px);
+}
+@supports (animation-timeline: view()) {
+  .landing-scroll-section .landing-reveal {
+    animation: landing-scroll-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 34%;
+  }
 }
 .hero-content {
   animation: enter-soft 0.7s ease-out both;
@@ -842,7 +1112,9 @@ h3,
 }
 .feed-row {
   display: grid;
-  grid-template-columns: minmax(240px, 2.4fr) minmax(100px, 0.8fr) 85px 65px 90px 22px;
+  grid-template-columns:
+    minmax(240px, 2.2fr) minmax(100px, 0.75fr) minmax(130px, 1fr) 85px 65px 85px 90px
+    22px;
   align-items: center;
   gap: 15px;
 }
@@ -991,7 +1263,11 @@ h3,
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
   padding: 14px 16px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--secondary) 70%, transparent), transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--secondary) 70%, transparent),
+    transparent
+  );
 }
 .execution-statusbar {
   display: flex;
@@ -1073,13 +1349,19 @@ h3,
   gap: 10px;
 }
 .order-grid-row {
-  grid-template-columns: 120px 72px 48px 95px 68px 68px 84px 104px 92px 94px 76px minmax(270px, 1fr) 86px;
+  grid-template-columns: 120px 72px 48px 95px 68px 68px 84px 104px 92px 94px 76px minmax(
+      270px,
+      1fr
+    ) 86px;
 }
 .fill-grid-row {
   grid-template-columns: 155px 76px 52px 72px 100px 100px 120px 100px;
 }
 .audit-grid-row {
-  grid-template-columns: 150px 64px 84px 110px 112px 48px 68px 68px 86px minmax(260px, 1fr) 140px 270px;
+  grid-template-columns: 150px 64px 84px 110px 112px 48px 68px 68px 86px minmax(
+      260px,
+      1fr
+    ) 140px 270px;
 }
 .position-book-row {
   display: grid;
@@ -1324,6 +1606,24 @@ h3,
   color: var(--muted-foreground);
   font-size: 11px;
 }
+@media (max-width: 767px) {
+  .broadcast-screen {
+    top: 126px;
+    right: -210px;
+    min-width: 520px;
+    opacity: 0.34;
+    transform: perspective(900px) rotateY(-9deg) scale(0.86);
+    transform-origin: top right;
+  }
+  .broadcast-projection {
+    top: 38vh;
+    width: 110vw;
+    opacity: 0.45;
+  }
+  .landing-scroll-section {
+    background: color-mix(in oklab, var(--background) 82%, transparent);
+  }
+}
 @media (min-width: 640px) {
   .workspace-content {
     padding: 32px 28px 0;
@@ -1452,5 +1752,13 @@ h3,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .landing-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .broadcast-screen::after,
+  .broadcast-ticker {
+    animation: none !important;
   }
 }

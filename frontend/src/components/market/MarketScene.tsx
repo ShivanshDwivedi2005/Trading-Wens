@@ -28,7 +28,7 @@ function makeCandles(count: number): Candle[] {
   return candles;
 }
 
-export function MarketScene() {
+export function MarketScene({ paused = false }: { paused?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -129,11 +129,11 @@ export function MarketScene() {
     };
     resize();
     window.addEventListener("resize", resize);
-    if (!reduceMotion) animation = requestAnimationFrame(tick);
+    if (!reduceMotion && !paused) animation = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(animation);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [paused]);
   return <canvas ref={ref} className="absolute inset-0 h-full w-full" aria-hidden="true" />;
 }

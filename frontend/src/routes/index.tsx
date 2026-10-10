@@ -9,6 +9,8 @@ import {
   Crosshair,
   LockKeyhole,
   Menu,
+  Pause,
+  Play,
   Radar,
   ShieldCheck,
   Sparkles,
@@ -44,6 +46,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [scenePaused, setScenePaused] = useState(false);
   useEffect(() => {
     let active = true;
     fetchCurrentUser()
@@ -57,8 +60,44 @@ function Home() {
       active = false;
     };
   }, []);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setScenePaused(true);
+    }
+  }, []);
   return (
-    <div className="landing min-h-screen bg-background text-foreground">
+    <div className="landing relative min-h-screen text-foreground">
+      <div className="landing-video-background" aria-hidden="true">
+        <MarketScene paused={scenePaused} />
+        <div className={`broadcast-screen ${scenePaused ? "broadcast-paused" : ""}`}>
+          <div className="broadcast-topline">
+            <span>WENS NEWS</span>
+            <span className="broadcast-live">LIVE</span>
+          </div>
+          <div className="broadcast-stage">
+            <div className="broadcast-anchor">
+              <span className="broadcast-head" />
+              <span className="broadcast-body" />
+            </div>
+            <div className="broadcast-copy">
+              <span>MARKET DESK</span>
+              <strong>Risk signals move with the market</strong>
+              <small>Live headlines · Price reaction · Position impact</small>
+            </div>
+          </div>
+          <div className="broadcast-lower-third">
+            <strong>BREAKING</strong>
+            <span>TECH SHARES RESPOND TO NEW MARKET SIGNALS</span>
+          </div>
+          <div className="broadcast-ticker">
+            <span>NVDA +1.82%</span>
+            <span>AAPL -0.64%</span>
+            <span>MSFT +0.91%</span>
+            <span>VIX 17.34</span>
+          </div>
+        </div>
+        <div className="broadcast-projection" />
+      </div>
       <header className="landing-header">
         <Link to="/" className="brand flex items-center gap-2.5">
           <span className="brand-mark">
@@ -107,6 +146,20 @@ function Home() {
         >
           {menuOpen ? <X /> : <Menu />}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="landing-motion-toggle"
+          aria-label={
+            scenePaused ? "Play animated market background" : "Pause animated market background"
+          }
+          aria-pressed={scenePaused}
+          title={scenePaused ? "Play background" : "Pause background"}
+          onClick={() => setScenePaused((current) => !current)}
+        >
+          {scenePaused ? <Play size={15} /> : <Pause size={15} />}
+        </Button>
       </header>
       {menuOpen && (
         <nav className="mobile-landing-nav">
@@ -123,7 +176,6 @@ function Home() {
       )}
       <main>
         <section className="hero relative isolate flex min-h-[680px] items-center overflow-hidden">
-          <MarketScene />
           <div className="hero-vignette absolute inset-0" />
           <div className="hero-ticker ticker-one">
             <span className="text-primary">●</span> NVDA SENTIMENT{" "}
@@ -141,7 +193,7 @@ function Home() {
           <div className="hero-ticker ticker-five">
             MARKET RISK REPORT <span className="text-primary">/ READY</span>
           </div>
-          <div className="hero-content relative z-10 mx-auto w-full max-w-7xl px-6 pb-28 pt-20 sm:px-10 lg:px-16">
+          <div className="hero-content landing-reveal relative z-10 mx-auto w-full max-w-7xl px-6 pb-28 pt-20 sm:px-10 lg:px-16">
             <div className="hero-kicker mb-8 inline-flex items-center gap-3 rounded-sm border border-primary/30 bg-primary/10 px-3 py-2 text-[10px] font-semibold tracking-[0.15em] text-primary">
               <span className="live-pulse size-1.5 rounded-full bg-primary" /> THE SIGNAL BEHIND THE
               NOISE <ChevronRight size={13} />
@@ -212,8 +264,8 @@ function Home() {
             </div>
           </div>
         </section>
-        <section className="border-b border-border bg-secondary/25">
-          <div className="mx-auto grid max-w-7xl gap-10 px-6 py-20 sm:px-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-24 lg:px-16 lg:py-28">
+        <section className="landing-scroll-section border-b border-border">
+          <div className="landing-reveal mx-auto grid max-w-7xl gap-10 px-6 py-20 sm:px-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-24 lg:px-16 lg:py-28">
             <div>
               <div className="label text-primary">FROM INFORMATION TO INTELLIGENCE</div>
               <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-tight sm:text-5xl">
@@ -274,8 +326,8 @@ function Home() {
             </div>
           </div>
         </section>
-        <section className="border-b border-border bg-background">
-          <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-6 py-20 sm:px-10 lg:flex-row lg:items-center lg:px-16">
+        <section className="landing-scroll-section border-b border-border">
+          <div className="landing-reveal mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 px-6 py-20 sm:px-10 lg:flex-row lg:items-center lg:px-16">
             <div>
               <div className="label text-primary">SEE THE INTELLIGENCE IN ACTION</div>
               <h2 className="mt-4 text-3xl font-semibold sm:text-4xl">
@@ -294,7 +346,7 @@ function Home() {
           </div>
         </section>
       </main>
-      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-muted-foreground sm:px-10 lg:px-16">
+      <footer className="landing-footer relative z-10 mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-xs text-muted-foreground sm:px-10 lg:px-16">
         <span>© 2026 TRADING WENS</span>
         <span>Market intelligence, with context.</span>
       </footer>
