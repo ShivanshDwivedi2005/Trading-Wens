@@ -22,7 +22,7 @@ export function AccountExecutionOverview({ portfolio }: { portfolio: TradingPort
     queryKey: ["trading", "orders"],
     queryFn: fetchOrderMonitor,
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: (query) => (query.state.data?.working_count ? 1_500 : 10_000),
     retry: 1,
   });
   const symbol = filter.trim().toUpperCase();
@@ -123,7 +123,7 @@ export function AccountExecutionOverview({ portfolio }: { portfolio: TradingPort
         <AuditTrail events={audit} />
       )}
       <div className="execution-statusbar">
-        <span>ALPACA · PAPER · DATABASE PERSISTED</span>
+        <span>ALPACA · SIMULATION · DATABASE PERSISTED</span>
         <span>
           {monitor.data
             ? `Ledger synchronized ${new Date(monitor.data.as_of).toLocaleTimeString()}`

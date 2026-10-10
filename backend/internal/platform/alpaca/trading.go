@@ -434,7 +434,7 @@ func buildAuditTrail(orders []domain.Order, fills []domain.Fill) []domain.OrderA
 			ID: order.ID + ":submitted", OrderID: order.ID, Symbol: order.Symbol,
 			Timestamp: order.SubmittedAt, Event: "SUBMITTED", Status: "submitted", Side: order.Side,
 			Quantity: order.Quantity, FilledQuantity: 0, Price: order.LimitPrice,
-			Message: fmt.Sprintf("%s %s order submitted to Alpaca paper trading", strings.ToUpper(order.Side), order.Type),
+			Message: fmt.Sprintf("%s %s order submitted to Alpaca simulation trading", strings.ToUpper(order.Side), order.Type),
 			Source:  "alpaca_order_api",
 		})
 		terminalTime, eventName := orderTerminalEvent(order)

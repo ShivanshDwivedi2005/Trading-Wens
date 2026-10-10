@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { fetchMarketSnapshots, fetchStockHistory, type StockHistoryRange } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
 import { fetchSocialPosts } from "@/lib/social-api";
-import { submitPaperOrder, type PaperOrderInput } from "@/lib/trading-api";
+import { fetchOrderMonitor, submitPaperOrder, type PaperOrderInput } from "@/lib/trading-api";
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -95,9 +95,20 @@ export function LiveTrading() {
   });
   const order = useMutation({
     mutationFn: submitPaperOrder,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["trading", "portfolio"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["trading", "orders"] }),
+        queryClient.invalidateQueries({ queryKey: ["trading", "portfolio"] }),
+      ]);
     },
+  });
+  const execution = useQuery({
+    queryKey: ["trading", "orders"],
+    queryFn: fetchOrderMonitor,
+    enabled: Boolean(order.data),
+    staleTime: 1_000,
+    refetchInterval: (query) => (query.state.data?.working_count ? 1_500 : false),
+    retry: 1,
   });
 
   const lastBar = history.data?.data.at(-1);
@@ -142,6 +153,15 @@ export function LiveTrading() {
     quantityNumber > 0 &&
     Number.isFinite(quantityNumber) &&
     (orderType === "market" || Number(limitPrice) > 0);
+  const monitoredOrder = order.data
+    ? (execution.data?.orders.find((item) => item.id === order.data.id) ?? order.data)
+    : null;
+  const limitPriceNumber = Number(limitPrice);
+  const limitIsMarketable =
+    orderType === "limit" &&
+    currentPrice > 0 &&
+    limitPriceNumber > 0 &&
+    (side === "buy" ? currentPrice <= limitPriceNumber : currentPrice >= limitPriceNumber);
 
   return (
     <div className="space-y-5">
@@ -179,7 +199,7 @@ export function LiveTrading() {
                   <span className="block text-foreground">
                     {stock.available ? money.format(stock.price) : "Unavailable"}
                   </span>
-                  <span className={stock.change_percent >= 0 ? "text-primary" : "text-destructive"}>
+                  <span className={stock.change_percent >= 0 ? "text-profit" : "text-loss"}>
                     {stock.available
                       ? `${stock.change_percent >= 0 ? "+" : ""}${stock.change_percent.toFixed(2)}%`
                       : "—"}
@@ -213,7 +233,7 @@ export function LiveTrading() {
                 {currentPrice ? money.format(currentPrice) : "—"}
               </div>
               <div
-                className={`mt-1 text-[10px] ${selected.change_percent >= 0 ? "text-primary" : "text-destructive"}`}
+                className={`mt-1 text-[10px] ${selected.change_percent >= 0 ? "text-profit" : "text-loss"}`}
               >
                 {selected.available
                   ? `${selected.change_percent >= 0 ? "+" : ""}${selected.change_percent.toFixed(2)}% today`
@@ -273,11 +293,11 @@ export function LiveTrading() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="label text-primary">ORDER TICKET</div>
-              <h2 className="mt-2 text-base font-semibold">Place paper order</h2>
+              <h2 className="mt-2 text-base font-semibold">Place simulation order</h2>
             </div>
             <ShieldCheck size={20} className="text-primary" />
           </div>
-          <div className="paper-notice mt-4">PAPER ACCOUNT · NO REAL MONEY</div>
+          <div className="paper-notice mt-4">SIMULATION ACCOUNT · NO REAL MONEY</div>
           <div className="mt-5 grid grid-cols-2 gap-2">
             {(["buy", "sell"] as const).map((value) => (
               <Button
@@ -329,6 +349,15 @@ export function LiveTrading() {
                 onChange={(event) => setLimitPrice(event.target.value)}
                 className="h-11"
               />
+              <p
+                className={`mt-2 text-[10px] leading-4 ${limitIsMarketable ? "text-profit" : "text-muted-foreground"}`}
+              >
+                {limitIsMarketable
+                  ? "Marketable now — eligible for an immediate simulated fill at the best available quote."
+                  : side === "buy"
+                    ? "Fills when the best available price reaches this level or lower."
+                    : "Fills when the best available price reaches this level or higher."}
+              </p>
             </>
           )}
           <div className="mt-5 border-y border-border py-4 text-xs">
@@ -355,13 +384,17 @@ export function LiveTrading() {
               {order.error.message}
             </p>
           )}
-          {order.data && (
+          {monitoredOrder && (
             <div className="mt-4 rounded border border-primary/30 bg-primary/5 p-3 text-xs">
               <div className="flex items-center gap-2 text-primary">
-                <CheckCircle2 size={14} /> Order {order.data.status}
+                <CheckCircle2 size={14} /> Simulation order {monitoredOrder.status}
               </div>
               <div className="mt-2 text-muted-foreground">
-                Paper order {order.data.id.slice(0, 8)}…
+                {monitoredOrder.working
+                  ? "Watching the live quote every 1.5 seconds for fill eligibility."
+                  : monitoredOrder.filled_quantity > 0
+                    ? `${monitoredOrder.filled_quantity} share${monitoredOrder.filled_quantity === 1 ? "" : "s"} filled${monitoredOrder.filled_average_price ? ` at ${money.format(monitoredOrder.filled_average_price)}` : ""}.`
+                    : `Order ${monitoredOrder.id.slice(0, 8)}… is no longer working.`}
               </div>
             </div>
           )}
@@ -454,10 +487,10 @@ export function LiveTrading() {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm paper order</AlertDialogTitle>
+            <AlertDialogTitle>Confirm simulation order</AlertDialogTitle>
             <AlertDialogDescription>
               This submits a {side} {orderType} order for {quantity || "0"} shares of{" "}
-              {selected.symbol} to the configured Alpaca paper account. No real money is used.
+              {selected.symbol} to the configured Alpaca simulation account. No real money is used.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded border border-border bg-secondary/40 p-4 text-sm">
@@ -469,7 +502,7 @@ export function LiveTrading() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => order.mutate(orderInput)}>
-              Submit paper order
+              Submit simulation order
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
+	tradingservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/trading"
 )
 
 var tradingSymbolPattern = regexp.MustCompile(`^[A-Z][A-Z0-9.-]{0,14}$`)
@@ -55,7 +56,7 @@ func (h *TradingHandler) OrderActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.service.CancelOrder(r.Context(), orderID); err != nil {
-		writeTradingError(w, err, "Paper order could not be canceled")
+		writeTradingError(w, err, "Simulation order could not be canceled")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -134,7 +135,7 @@ func (h *TradingHandler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if request.TimeInForce != "day" {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_time_in_force", "Paper orders currently use day time in force")
+		writeError(w, http.StatusUnprocessableEntity, "invalid_time_in_force", "Simulation orders currently use day time in force")
 		return
 	}
 	if request.Type == "limit" && request.LimitPrice <= 0 {
@@ -144,7 +145,7 @@ func (h *TradingHandler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.service.SubmitOrder(r.Context(), request)
 	if err != nil {
-		writeTradingError(w, err, "Paper order could not be submitted")
+		writeTradingError(w, err, "Simulation order could not be submitted")
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
@@ -152,6 +153,11 @@ func (h *TradingHandler) SubmitOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeTradingError(w http.ResponseWriter, err error, fallback string) {
+	var conflictErr *tradingservice.OrderConflictError
+	if errors.As(err, &conflictErr) {
+		writeError(w, http.StatusConflict, "potential_wash_trade", conflictErr.Message)
+		return
+	}
 	var apiErr *alpaca.TradingAPIError
 	if errors.As(err, &apiErr) {
 		status := apiErr.Status

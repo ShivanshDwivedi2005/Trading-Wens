@@ -15,6 +15,12 @@ import (
 
 var ErrUnauthenticated = errors.New("authenticated user is required")
 
+type OrderConflictError struct {
+	Message string
+}
+
+func (e *OrderConflictError) Error() string { return e.Message }
+
 type Provider interface {
 	Portfolio(ctx context.Context) (domain.Portfolio, error)
 	Assets(ctx context.Context, search string) ([]domain.TradingAsset, error)
@@ -90,6 +96,16 @@ func (s *Service) SubmitOrder(ctx context.Context, request domain.OrderRequest) 
 	if err != nil {
 		return domain.Order{}, err
 	}
+	if current, monitorErr := s.provider.OrderMonitor(ctx); monitorErr == nil {
+		if conflicting := potentialWashTrade(request, current.Orders); conflicting != nil {
+			return domain.Order{}, &OrderConflictError{Message: fmt.Sprintf(
+				"This simulation order would cross working %s order %s at %s. Use a buy limit below the sell limit, a sell limit above the buy limit, or cancel the working order first.",
+				conflicting.Side,
+				conflicting.ID,
+				decimalPrice(conflicting.LimitPrice),
+			)}
+		}
+	}
 	order, err := s.provider.SubmitOrder(ctx, request)
 	if err != nil {
 		return domain.Order{}, err
@@ -112,6 +128,31 @@ func (s *Service) SubmitOrder(ctx context.Context, request domain.OrderRequest) 
 		}
 	}
 	return order, nil
+}
+
+func potentialWashTrade(request domain.OrderRequest, orders []domain.Order) *domain.Order {
+	for index := range orders {
+		existing := &orders[index]
+		if !existing.Working || !strings.EqualFold(existing.Symbol, request.Symbol) || existing.Side == request.Side {
+			continue
+		}
+		if request.Type != "limit" || existing.Type != "limit" || request.LimitPrice <= 0 || existing.LimitPrice <= 0 {
+			return existing
+		}
+
+		buyLimit, sellLimit := request.LimitPrice, existing.LimitPrice
+		if request.Side == "sell" {
+			buyLimit, sellLimit = existing.LimitPrice, request.LimitPrice
+		}
+		if buyLimit >= sellLimit {
+			return existing
+		}
+	}
+	return nil
+}
+
+func decimalPrice(value float64) string {
+	return fmt.Sprintf("%.2f", value)
 }
 
 func (s *Service) OrderMonitor(ctx context.Context) (domain.OrderMonitor, error) {
@@ -262,7 +303,7 @@ func monitorForSubmittedOrder(order domain.Order) domain.OrderMonitor {
 			ID: order.ID + ":submitted", OrderID: order.ID, Symbol: order.Symbol,
 			Timestamp: order.SubmittedAt, Event: "SUBMITTED", Status: order.Status,
 			Side: order.Side, Quantity: order.Quantity, FilledQuantity: order.FilledQuantity,
-			Price: order.LimitPrice, Message: "Paper order accepted by Alpaca", Source: "alpaca",
+			Price: order.LimitPrice, Message: "Simulation order accepted by Alpaca", Source: "alpaca",
 		}},
 		AsOf: order.UpdatedAt, Source: "alpaca", Mode: "paper", OrderCount: 1,
 	}

@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/orders")({
       {
         name: "description",
         content:
-          "Monitor Alpaca paper orders, fills, position evidence, and execution audit events.",
+          "Monitor Alpaca simulation orders, fills, position evidence, and execution audit events.",
       },
     ],
   }),

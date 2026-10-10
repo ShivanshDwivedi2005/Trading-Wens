@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
+  ExternalLink,
   FileClock,
   RefreshCw,
   Search,
@@ -57,14 +58,14 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
     queryKey: ["trading", "orders"],
     queryFn: fetchOrderMonitor,
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: (query) => (query.state.data?.working_count ? 1_500 : 10_000),
     retry: 1,
   });
   const portfolio = useQuery({
     queryKey: ["trading", "portfolio"],
     queryFn: fetchTradingPortfolio,
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: () => (monitor.data?.working_count ? 1_500 : 10_000),
     retry: 1,
   });
   const news = useQuery({
@@ -135,7 +136,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
           </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-          <span className="paper-notice hidden sm:block">ALPACA PAPER</span>
+          <span className="paper-notice hidden sm:block">ALPACA SIMULATION</span>
           <span className="hidden text-[10px] text-muted-foreground md:block">
             {monitor.data
               ? `Updated ${new Date(monitor.data.as_of).toLocaleTimeString()}`
@@ -179,7 +180,9 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
             label="ACCOUNT"
             value={portfolio.data?.account.status ?? "—"}
             detail={
-              portfolio.data ? `${portfolio.data.account.id.slice(0, 8)}… · paper` : "Verifying"
+              portfolio.data
+                ? `${portfolio.data.account.id.slice(0, 8)}… · simulation`
+                : "Verifying"
             }
           />
         </section>
@@ -189,7 +192,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
             <WifiOff size={22} />
             <div>
               <strong>Order activity is unavailable.</strong>
-              <p>Check the Alpaca paper connection, then retry.</p>
+              <p>Check the Alpaca simulation connection, then retry.</p>
             </div>
             <Button variant="outline" onClick={refresh}>
               Retry
@@ -252,7 +255,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
             <aside className="outlook-panel">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="label text-muted-foreground">POSITION OUTLOOK</div>
+                  <div className="label text-muted-foreground">RISK INTELLIGENCE</div>
                   <h2 className="mt-2 text-lg font-semibold">
                     {focusPosition?.symbol ?? "No open position"}
                   </h2>
@@ -276,7 +279,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
               </div>
               <div className="outlook-metrics">
                 <div>
-                  <span>Score</span>
+                  <span>Risk score</span>
                   <strong>{outlook.score.toFixed(1)} / 10</strong>
                 </div>
                 <div>
@@ -285,7 +288,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
                 </div>
               </div>
               <div className="mt-5">
-                <div className="label text-muted-foreground">WHY THIS RESULT</div>
+                <div className="label text-muted-foreground">RISK FACTORS</div>
                 <ul className="outlook-reasons">
                   {outlook.reasons.map((reason) => (
                     <li key={reason}>{reason}</li>
@@ -296,9 +299,17 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
                 <div className="label text-muted-foreground">EVIDENCE SOURCES</div>
                 <div className="mt-3 space-y-2">
                   {outlook.sources.map((source) => (
-                    <div className="source-row" key={source}>
-                      <CheckCircle2 size={12} aria-hidden="true" /> {source}
-                    </div>
+                    <a
+                      className="source-row"
+                      key={source.url}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      <CheckCircle2 size={12} aria-hidden="true" />
+                      <span className="min-w-0 flex-1">{source.label}</span>
+                      <ExternalLink size={11} aria-hidden="true" />
+                    </a>
                   ))}
                 </div>
               </div>
@@ -317,7 +328,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel working paper order?</AlertDialogTitle>
+            <AlertDialogTitle>Cancel working simulation order?</AlertDialogTitle>
             <AlertDialogDescription>
               This sends a cancellation request for {cancelTarget?.symbol} order{" "}
               {cancelTarget?.id.slice(0, 8)}… to Alpaca. Already filled quantity cannot be canceled.
@@ -337,7 +348,7 @@ export function OrderMonitor({ initialSymbol = "" }: { initialSymbol?: string })
                 if (cancelTarget) cancelOrder.mutate(cancelTarget.id);
               }}
             >
-              {cancelOrder.isPending ? "Canceling…" : "Cancel paper order"}
+              {cancelOrder.isPending ? "Canceling…" : "Cancel simulation order"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -399,7 +410,11 @@ export function OrderBook({
 }) {
   return (
     <div className="overflow-x-auto">
-      <div className="order-grid min-w-[1480px]" role="table" aria-label="Alpaca paper order book">
+      <div
+        className="order-grid min-w-[1480px]"
+        role="table"
+        aria-label="Alpaca simulation order book"
+      >
         <div className="order-grid-row order-grid-head" role="row">
           <span>Time</span>
           <span>Contract</span>
@@ -551,7 +566,11 @@ export function FillsView({
 export function AuditTrail({ events }: { events: OrderAuditEvent[] }) {
   return (
     <div className="overflow-x-auto">
-      <div className="audit-grid min-w-[1420px]" role="table" aria-label="Paper order audit trail">
+      <div
+        className="audit-grid min-w-[1420px]"
+        role="table"
+        aria-label="Simulation order audit trail"
+      >
         <div className="audit-grid-row order-grid-head" role="row">
           <span>Time</span>
           <span>Exch</span>
@@ -617,7 +636,7 @@ export function PositionBook({
         </div>
         <div className="position-book-row position-account-row" role="row">
           <strong>▾ {accountID.slice(0, 12)}…</strong>
-          <span>PAPER</span>
+          <span>SIM</span>
           <span>{positions.length} positions</span>
           <span>—</span>
           <span>—</span>

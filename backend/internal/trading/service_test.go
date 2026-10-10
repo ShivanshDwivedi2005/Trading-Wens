@@ -98,3 +98,33 @@ func TestOrderMonitorRequiresAuthenticatedUser(t *testing.T) {
 		t.Fatalf("expected unauthenticated error, got %v", err)
 	}
 }
+
+func TestPotentialWashTradeAllowsSeparatedLimitOrders(t *testing.T) {
+	workingSell := domain.Order{
+		ID: "sell-1", Symbol: "AAPL", Side: "sell", Type: "limit", LimitPrice: 220, Working: true,
+	}
+	request := domain.OrderRequest{
+		Symbol: "AAPL", Side: "buy", Type: "limit", LimitPrice: 210,
+	}
+
+	if conflict := potentialWashTrade(request, []domain.Order{workingSell}); conflict != nil {
+		t.Fatalf("buy limit below sell limit must remain valid, got conflict %#v", conflict)
+	}
+}
+
+func TestPotentialWashTradeRejectsCrossedOrMarketOrders(t *testing.T) {
+	workingSell := domain.Order{
+		ID: "sell-1", Symbol: "AAPL", Side: "sell", Type: "limit", LimitPrice: 220, Working: true,
+	}
+	tests := []domain.OrderRequest{
+		{Symbol: "AAPL", Side: "buy", Type: "limit", LimitPrice: 220},
+		{Symbol: "AAPL", Side: "buy", Type: "limit", LimitPrice: 225},
+		{Symbol: "AAPL", Side: "buy", Type: "market"},
+	}
+
+	for _, request := range tests {
+		if conflict := potentialWashTrade(request, []domain.Order{workingSell}); conflict == nil {
+			t.Fatalf("expected conflict for %#v", request)
+		}
+	}
+}
