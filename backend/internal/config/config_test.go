@@ -85,3 +85,22 @@ func TestValidPostgresURL(t *testing.T) {
 		t.Fatal("expected HTTP database URL to be rejected")
 	}
 }
+
+func TestGoogleOAuthCanBeDisabled(t *testing.T) {
+	values := map[string]string{
+		"DATABASE_URL":               "postgresql://user:password@host.neon.tech/trading?sslmode=require",
+		"GOOGLE_OAUTH_ENABLED":       "false",
+		"GOOGLE_OAUTH_CLIENT_ID":     "",
+		"GOOGLE_OAUTH_CLIENT_SECRET": "",
+		"GOOGLE_OAUTH_REDIRECT_URI":  "",
+		"APP_SESSION_SIGNING_KEY":    "12345678901234567890123456789012",
+		"ALPACA_API_KEY":             "key",
+		"ALPACA_SECRET_KEY":          "secret",
+	}
+	for key, value := range values {
+		t.Setenv(key, value)
+	}
+	if cfg, err := Load(); err != nil || cfg.GoogleEnabled {
+		t.Fatalf("expected optional Google OAuth, got %#v %v", cfg, err)
+	}
+}

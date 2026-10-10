@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	authservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/auth"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/domain"
 )
 
@@ -23,9 +25,18 @@ const (
 type GoogleAuthService interface {
 	AuthorizationURL(state, challenge string) string
 	Exchange(ctx context.Context, code, verifier string) (domain.User, error)
+}
+
+type SessionService interface {
 	CreateSession(user domain.User) (string, error)
 	User(ctx context.Context, token string) (domain.User, error)
 	SessionTTL() time.Duration
+}
+
+type CredentialAuthService interface {
+	SessionService
+	Signup(ctx context.Context, username, email, password, displayName string) (domain.User, error)
+	Login(ctx context.Context, identity, password string) (domain.User, error)
 }
 
 type UserProfileStore interface {
@@ -34,12 +45,14 @@ type UserProfileStore interface {
 
 type GoogleAuthHandler struct {
 	service     GoogleAuthService
+	sessions    SessionService
 	frontendURL string
 	profiles    UserProfileStore
 }
 
 func NewGoogleAuthHandler(
 	service GoogleAuthService,
+	sessions SessionService,
 	frontendURL string,
 	profileStores ...UserProfileStore,
 ) *GoogleAuthHandler {
@@ -48,7 +61,7 @@ func NewGoogleAuthHandler(
 		profiles = profileStores[0]
 	}
 	return &GoogleAuthHandler{
-		service: service, frontendURL: strings.TrimRight(frontendURL, "/"), profiles: profiles,
+		service: service, sessions: sessions, frontendURL: strings.TrimRight(frontendURL, "/"), profiles: profiles,
 	}
 }
 
@@ -108,16 +121,12 @@ func (h *GoogleAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	session, err := h.service.CreateSession(user)
+	session, err := h.sessions.CreateSession(user)
 	if err != nil {
 		h.redirectAuthError(w, r, "A secure session could not be created")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookieName, Value: session, Path: "/", HttpOnly: true,
-		Secure: secureRequest(r), SameSite: http.SameSiteLaxMode,
-		MaxAge: int(h.service.SessionTTL().Seconds()), Expires: time.Now().Add(h.service.SessionTTL()),
-	})
+	setSessionCookie(w, r, session, h.sessions.SessionTTL())
 	http.Redirect(w, r, h.frontendURL+"/dashboard", http.StatusFound)
 }
 
@@ -129,10 +138,10 @@ func (h *GoogleAuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 	}
 	cookie, err := r.Cookie(sessionCookieName)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Google sign-in is required")
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Sign-in is required")
 		return
 	}
-	user, err := h.service.User(r.Context(), cookie.Value)
+	user, err := h.sessions.User(r.Context(), cookie.Value)
 	if err != nil {
 		clearSessionCookie(w, r)
 		writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
@@ -146,6 +155,122 @@ func (h *GoogleAuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, map[string]domain.User{"user": user})
+}
+
+type CredentialAuthHandler struct {
+	service CredentialAuthService
+}
+
+func NewCredentialAuthHandler(service CredentialAuthService) *CredentialAuthHandler {
+	return &CredentialAuthHandler{service: service}
+}
+
+func (h *CredentialAuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
+		return
+	}
+	var request struct {
+		Username    string `json:"username"`
+		Email       string `json:"email"`
+		Password    string `json:"password"`
+		DisplayName string `json:"display_name"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	user, err := h.service.Signup(r.Context(), request.Username, request.Email, request.Password, request.DisplayName)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrIdentityTaken):
+			writeError(w, http.StatusConflict, "identity_taken", err.Error())
+		case errors.Is(err, authservice.ErrInvalidSignup):
+			writeError(w, http.StatusBadRequest, "invalid_signup", "Use a valid email, a 3–32 character username, and a password of at least 12 characters")
+		default:
+			writeError(w, http.StatusServiceUnavailable, "authentication_unavailable", "Account creation is temporarily unavailable")
+		}
+		return
+	}
+	h.writeSession(w, r, http.StatusCreated, user)
+}
+
+func (h *CredentialAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
+		return
+	}
+	var request struct {
+		Identity string `json:"identity"`
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	user, err := h.service.Login(r.Context(), request.Identity, request.Password)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidCredentials) {
+			writeError(w, http.StatusUnauthorized, "invalid_credentials", domain.ErrInvalidCredentials.Error())
+		} else {
+			writeError(w, http.StatusServiceUnavailable, "authentication_unavailable", "Sign-in is temporarily unavailable")
+		}
+		return
+	}
+	h.writeSession(w, r, http.StatusOK, user)
+}
+
+func (h *CredentialAuthHandler) Session(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only GET is allowed")
+		return
+	}
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized", "Sign-in is required")
+		return
+	}
+	user, err := h.service.User(r.Context(), cookie.Value)
+	if err != nil {
+		clearSessionCookie(w, r)
+		writeError(w, http.StatusUnauthorized, "unauthorized", "The session is invalid or expired")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, map[string]domain.User{"user": user})
+}
+
+func (h *CredentialAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Only POST is allowed")
+		return
+	}
+	clearSessionCookie(w, r)
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *CredentialAuthHandler) writeSession(w http.ResponseWriter, r *http.Request, status int, user domain.User) {
+	session, err := h.service.CreateSession(user)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "authentication_failed", "A secure session could not be created")
+		return
+	}
+	setSessionCookie(w, r, session, h.service.SessionTTL())
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, status, map[string]domain.User{"user": user})
+}
+
+func setSessionCookie(w http.ResponseWriter, r *http.Request, value string, ttl time.Duration) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookieName, Value: value, Path: "/", HttpOnly: true,
+		Secure: secureRequest(r), SameSite: http.SameSiteLaxMode,
+		MaxAge: int(ttl.Seconds()), Expires: time.Now().Add(ttl),
+	})
 }
 
 func (h *GoogleAuthHandler) Logout(w http.ResponseWriter, r *http.Request) {

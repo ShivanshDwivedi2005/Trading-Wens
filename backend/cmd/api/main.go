@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	authservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/auth"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/config"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
 	newsservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/news"
@@ -38,18 +40,26 @@ func main() {
 		logger.Fatalf("database is unavailable or migrations are missing: %v", err)
 	}
 
-	authClient, err := googleauth.NewClient(
-		cfg.GoogleClientID,
-		cfg.GoogleClientSecret,
-		cfg.GoogleRedirectURL,
-		cfg.SessionSecret,
-		cfg.SessionTTL,
-		nil,
-	)
+	authService, err := authservice.NewService(databaseClient, cfg.SessionSecret, cfg.SessionTTL)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	authHandler := httpapi.NewGoogleAuthHandler(authClient, cfg.FrontendURL, databaseClient)
+	credentialAuthHandler := httpapi.NewCredentialAuthHandler(authService)
+	var googleAuthHandler *httpapi.GoogleAuthHandler
+	if cfg.GoogleEnabled {
+		googleClient, err := googleauth.NewClient(
+			cfg.GoogleClientID,
+			cfg.GoogleClientSecret,
+			cfg.GoogleRedirectURL,
+			cfg.SessionSecret,
+			cfg.SessionTTL,
+			nil,
+		)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		googleAuthHandler = httpapi.NewGoogleAuthHandler(googleClient, authService, cfg.FrontendURL, databaseClient)
+	}
 	marketClient, err := alpaca.NewClient(
 		cfg.AlpacaDataURL,
 		cfg.AlpacaAPIKeyID,
@@ -104,41 +114,65 @@ func main() {
 	socialHandler := httpapi.NewSocialHandler(socialService)
 
 	router := http.NewServeMux()
-	router.HandleFunc("/api/v1/auth/google/start", authHandler.Start)
-	router.HandleFunc("/auth/google/callback", authHandler.Callback)
-	router.HandleFunc("/api/v1/auth/session", authHandler.Session)
-	router.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
+	router.HandleFunc("/api/v1/auth/providers", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, "Only GET is allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"password":true,"google":%t}`, cfg.GoogleEnabled)))
+	})
+	router.HandleFunc("/api/v1/auth/google/start", func(w http.ResponseWriter, r *http.Request) {
+		if googleAuthHandler == nil {
+			http.Error(w, "Google sign-in is not configured", http.StatusServiceUnavailable)
+			return
+		}
+		googleAuthHandler.Start(w, r)
+	})
+	router.HandleFunc("/auth/google/callback", func(w http.ResponseWriter, r *http.Request) {
+		if googleAuthHandler == nil {
+			http.Redirect(w, r, cfg.FrontendURL+"/auth?error=Google+sign-in+is+not+configured", http.StatusFound)
+			return
+		}
+		googleAuthHandler.Callback(w, r)
+	})
+	router.HandleFunc("/api/v1/auth/signup", credentialAuthHandler.Signup)
+	router.HandleFunc("/api/v1/auth/login", credentialAuthHandler.Login)
+	router.HandleFunc("/api/v1/auth/session", credentialAuthHandler.Session)
+	router.HandleFunc("/api/v1/auth/logout", credentialAuthHandler.Logout)
 	router.Handle(
 		"/api/v1/market/snapshots",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.Snapshots)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(marketHandler.Snapshots)),
 	)
 	router.Handle(
 		"/api/v1/market/stocks/{symbol}/history",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(marketHandler.History)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(marketHandler.History)),
 	)
 	router.Handle(
 		"/api/v1/news",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(newsHandler.Latest)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(newsHandler.Latest)),
 	)
 	router.Handle(
 		"/api/v1/social",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(socialHandler.Latest)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(socialHandler.Latest)),
 	)
 	router.Handle(
 		"/api/v1/trading/portfolio",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Portfolio)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(tradingHandler.Portfolio)),
 	)
 	router.Handle(
 		"/api/v1/trading/assets",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Assets)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(tradingHandler.Assets)),
 	)
 	router.Handle(
 		"/api/v1/trading/orders",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.Orders)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(tradingHandler.Orders)),
 	)
 	router.Handle(
 		"/api/v1/trading/orders/{orderID}",
-		httpapi.RequireAuth(authClient, http.HandlerFunc(tradingHandler.OrderActions)),
+		httpapi.RequireAuth(authService, http.HandlerFunc(tradingHandler.OrderActions)),
 	)
 	router.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

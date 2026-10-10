@@ -19,6 +19,7 @@ type Config struct {
 	DatabaseTimeout    time.Duration
 	DatabaseMinConns   int32
 	DatabaseMaxConns   int32
+	GoogleEnabled      bool
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
@@ -63,18 +64,28 @@ func Load() (Config, error) {
 	if cfg.NLPAPIURL == "" {
 		cfg.NLPAPIURL = "http://127.0.0.1:8090"
 	}
+	googleEnabledValue := firstValue("GOOGLE_OAUTH_ENABLED")
+	if googleEnabledValue == "" {
+		cfg.GoogleEnabled = cfg.GoogleClientID != "" || cfg.GoogleClientSecret != ""
+	} else {
+		googleEnabled, err := strconv.ParseBool(googleEnabledValue)
+		if err != nil {
+			return Config{}, errors.New("GOOGLE_OAUTH_ENABLED must be true or false")
+		}
+		cfg.GoogleEnabled = googleEnabled
+	}
 
 	var missing []string
 	if cfg.DatabaseURL == "" {
 		missing = append(missing, "DATABASE_URL")
 	}
-	if cfg.GoogleClientID == "" {
+	if cfg.GoogleEnabled && cfg.GoogleClientID == "" {
 		missing = append(missing, "GOOGLE_OAUTH_CLIENT_ID")
 	}
-	if cfg.GoogleClientSecret == "" {
+	if cfg.GoogleEnabled && cfg.GoogleClientSecret == "" {
 		missing = append(missing, "GOOGLE_OAUTH_CLIENT_SECRET")
 	}
-	if cfg.GoogleRedirectURL == "" {
+	if cfg.GoogleEnabled && cfg.GoogleRedirectURL == "" {
 		missing = append(missing, "GOOGLE_OAUTH_REDIRECT_URI")
 	}
 	if cfg.SessionSecret == "" {
@@ -99,7 +110,7 @@ func Load() (Config, error) {
 	if !validHTTPURL(cfg.FrontendURL) {
 		return Config{}, errors.New("FRONTEND_URL must be an HTTP or HTTPS URL")
 	}
-	if !validHTTPURL(cfg.GoogleRedirectURL) {
+	if cfg.GoogleEnabled && !validHTTPURL(cfg.GoogleRedirectURL) {
 		return Config{}, errors.New("GOOGLE_OAUTH_REDIRECT_URI must be an HTTP or HTTPS URL")
 	}
 	if !strings.HasPrefix(cfg.AlpacaDataURL, "https://") && !strings.HasPrefix(cfg.AlpacaDataURL, "http://") {

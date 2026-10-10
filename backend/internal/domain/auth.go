@@ -1,6 +1,14 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+var (
+	ErrIdentityTaken      = errors.New("email or username is already registered")
+	ErrInvalidCredentials = errors.New("invalid email, username, or password")
+)
 
 type User struct {
 	ID          string `json:"id"`

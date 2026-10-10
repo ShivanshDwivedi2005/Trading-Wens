@@ -46,7 +46,7 @@ func (s googleAuthStub) User(_ context.Context, token string) (domain.User, erro
 func (s googleAuthStub) SessionTTL() time.Duration { return 8 * time.Hour }
 
 func TestGoogleAuthStartSetsStateAndPKCECookies(t *testing.T) {
-	handler := NewGoogleAuthHandler(googleAuthStub{}, "http://localhost:3000")
+	handler := NewGoogleAuthHandler(googleAuthStub{}, googleAuthStub{}, "http://localhost:3000")
 	res := httptest.NewRecorder()
 	handler.Start(res, httptest.NewRequest(http.MethodGet, "/api/v1/auth/google/start", nil))
 	if res.Code != http.StatusFound || !strings.HasPrefix(res.Header().Get("Location"), "https://accounts.google.com/") {
@@ -65,7 +65,7 @@ func TestGoogleAuthCallbackCreatesSession(t *testing.T) {
 		return domain.User{ID: "user-1", Email: "analyst@example.com"}, nil
 	}}
 	profiles := &profileStoreStub{}
-	handler := NewGoogleAuthHandler(service, "http://localhost:3000", profiles)
+	handler := NewGoogleAuthHandler(service, service, "http://localhost:3000", profiles)
 	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=google-code&state=expected-state", nil)
 	req.AddCookie(&http.Cookie{Name: stateCookieName, Value: "expected-state"})
 	req.AddCookie(&http.Cookie{Name: verifierCookieName, Value: "pkce-verifier"})
@@ -89,10 +89,11 @@ func TestGoogleAuthCallbackCreatesSession(t *testing.T) {
 }
 
 func TestGoogleAuthCallbackRejectsStateMismatch(t *testing.T) {
-	handler := NewGoogleAuthHandler(googleAuthStub{exchange: func(context.Context, string, string) (domain.User, error) {
+	service := googleAuthStub{exchange: func(context.Context, string, string) (domain.User, error) {
 		t.Fatal("exchange must not run")
 		return domain.User{}, nil
-	}}, "http://localhost:3000")
+	}}
+	handler := NewGoogleAuthHandler(service, service, "http://localhost:3000")
 	req := httptest.NewRequest(http.MethodGet, "/auth/google/callback?code=code&state=wrong", nil)
 	req.AddCookie(&http.Cookie{Name: stateCookieName, Value: "expected"})
 	req.AddCookie(&http.Cookie{Name: verifierCookieName, Value: "verifier"})
@@ -104,7 +105,7 @@ func TestGoogleAuthCallbackRejectsStateMismatch(t *testing.T) {
 }
 
 func TestGoogleSessionAndLogout(t *testing.T) {
-	handler := NewGoogleAuthHandler(googleAuthStub{}, "http://localhost:3000")
+	handler := NewGoogleAuthHandler(googleAuthStub{}, googleAuthStub{}, "http://localhost:3000")
 	sessionReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil)
 	sessionReq.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "signed-session-for-user-1"})
 	sessionRes := httptest.NewRecorder()

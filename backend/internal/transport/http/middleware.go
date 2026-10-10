@@ -16,7 +16,7 @@ func RequireAuth(verifier SessionVerifier, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(sessionCookieName)
 		if err != nil || cookie.Value == "" {
-			writeError(w, http.StatusUnauthorized, "unauthorized", "Google sign-in is required")
+			writeError(w, http.StatusUnauthorized, "unauthorized", "Sign-in is required")
 			return
 		}
 
@@ -40,6 +40,10 @@ func CORS(allowedOrigins []string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := strings.TrimRight(strings.TrimSpace(r.Header.Get("Origin")), "/")
 		_, originAllowed := allowed[origin]
+		if origin != "" && !originAllowed {
+			writeError(w, http.StatusForbidden, "origin_not_allowed", "The request origin is not allowed")
+			return
+		}
 		if origin != "" && originAllowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
