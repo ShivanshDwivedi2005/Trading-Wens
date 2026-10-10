@@ -4,6 +4,7 @@ import {
   BrainCircuit,
   CheckCircle2,
   CircleDot,
+  ExternalLink,
   ScanSearch,
   X,
 } from "lucide-react";
@@ -37,6 +38,14 @@ export function SignalDetail({ event, onClose }: { event: RiskEvent; onClose: ()
       </div>
       <h3 className="mt-7 text-lg font-medium leading-snug">{event.headline}</h3>
       <p className="mt-3 text-sm leading-7 text-muted-foreground">{event.excerpt}</p>
+      <a
+        href={event.sourceUrl}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 text-xs text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Open evidence source <ExternalLink size={13} aria-hidden="true" />
+      </a>
       <div className="mt-7 border-y border-border py-5">
         <div className="label text-muted-foreground">RAW INPUT → STRUCTURED SIGNAL</div>
         <div className="mt-5 space-y-5">
@@ -67,7 +76,7 @@ export function SignalDetail({ event, onClose }: { event: RiskEvent; onClose: ()
           </div>
         </div>
       </div>
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className="mt-6 grid grid-cols-2 gap-2">
         {[
           [
             "SENTIMENT",
@@ -75,6 +84,7 @@ export function SignalDetail({ event, onClose }: { event: RiskEvent; onClose: ()
           ],
           ["IMPACT", `${event.impact}/10`],
           ["CONFIDENCE", `${event.confidence}%`],
+          ["RISK LEVEL", event.severity],
         ].map(([label, value]) => (
           <div key={label} className="rounded-md border border-border bg-secondary/40 p-3">
             <div className="label text-muted-foreground">{label}</div>
@@ -89,8 +99,8 @@ export function SignalDetail({ event, onClose }: { event: RiskEvent; onClose: ()
           <div
             className={
               event.sentiment < 0
-                ? "flex items-center gap-1 text-xs text-destructive"
-                : "flex items-center gap-1 text-xs text-primary"
+                ? "flex items-center gap-1 text-xs text-loss"
+                : "flex items-center gap-1 text-xs text-profit"
             }
           >
             {event.sentiment < 0 ? <ArrowDownRight size={15} /> : <ArrowUpRight size={15} />}

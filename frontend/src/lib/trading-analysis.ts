@@ -7,7 +7,7 @@ export type PositionOutlook = {
   score: number;
   confidence: number;
   reasons: string[];
-  sources: string[];
+  sources: Array<{ label: string; url: string }>;
 };
 
 export function positionOutlook(
@@ -21,7 +21,12 @@ export function positionOutlook(
       score: 5,
       confidence: 25,
       reasons: ["No open position is available for mark-to-market evidence."],
-      sources: ["Alpaca paper account"],
+      sources: [
+        {
+          label: "Alpaca simulation account methodology",
+          url: "https://docs.alpaca.markets/docs/paper-trading",
+        },
+      ],
     };
   }
 
@@ -56,8 +61,16 @@ export function positionOutlook(
       ? `${analyzed.length} model-scored headline${analyzed.length === 1 ? "" : "s"} contribute a confidence-weighted sentiment of ${sentiment >= 0 ? "+" : ""}${sentiment.toFixed(2)}.`
       : "No current model-scored headline matched this symbol, so news contributes a neutral input.",
   ];
-  const sources = ["Alpaca paper position and mark prices"];
-  if (analyzed.length) sources.push("Trading Wens FinBERT sentiment on Alpaca and GDELT news");
+  const sources = [
+    {
+      label: "Alpaca simulation position and mark prices",
+      url: "https://docs.alpaca.markets/docs/paper-trading",
+    },
+    ...articles
+      .filter((article) => article.matched_symbols.includes(position.symbol) && article.sentiment)
+      .slice(0, 4)
+      .map((article) => ({ label: article.title, url: article.url })),
+  ];
 
   return {
     direction,

@@ -127,7 +127,7 @@ export function MarketOverview() {
                       </span>
                       <span
                         role="cell"
-                        className={`text-xs tabular-nums ${positive ? "text-primary" : "text-destructive"}`}
+                        className={`text-xs tabular-nums ${positive ? "text-profit" : "text-loss"}`}
                       >
                         {snapshot.available
                           ? `${positive ? "+" : ""}${snapshot.change.toFixed(2)} (${positive ? "+" : ""}${snapshot.change_percent.toFixed(2)}%)`

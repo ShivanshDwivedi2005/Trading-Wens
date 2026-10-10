@@ -140,12 +140,12 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
       <div className="mt-auto px-5 pb-5 pt-8">
         <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
           <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-            <Sparkles size={14} /> {demo ? "DEMO ENVIRONMENT" : "ALPACA PAPER ACCOUNT"}
+            <Sparkles size={14} /> {demo ? "DEMO ENVIRONMENT" : "ALPACA SIMULATION ACCOUNT"}
           </div>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             {demo
               ? "Explore simulated monitoring signals. Sign in for live account data."
-              : "Portfolio data and orders use the configured Alpaca paper account."}
+              : "Portfolio data and orders use the configured Alpaca simulation account."}
           </p>
           {demo && (
             <Button asChild size="sm" className="mt-4 w-full">
@@ -248,7 +248,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
             <span className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-accent" />
               {isProviderView
-                ? "ALPACA PAPER ACCOUNT · LIVE PROVIDER DATA"
+                ? "ALPACA SIMULATION ACCOUNT · LIVE PROVIDER DATA"
                 : "MONITORING · SIMULATED SIGNALS"}
             </span>
             {demo && (
@@ -274,7 +274,7 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
               <div className="label text-muted-foreground">ACCOUNT MODE</div>
               <div className="mt-2 flex items-center gap-2 text-xs text-primary sm:justify-end">
                 <span className="size-1.5 rounded-full bg-primary" />
-                {isProviderView ? "Paper trading active" : "Monitoring active"}
+                {isProviderView ? "Simulation trading active" : "Monitoring active"}
               </div>
             </div>
           </div>
@@ -294,7 +294,8 @@ export function RiskWorkspace({ demo = false }: { demo?: boolean }) {
 
           <footer className="mt-7 flex flex-wrap items-center justify-between gap-3 pb-7 text-[11px] text-muted-foreground">
             <span>
-              © TRADING WENS · {isProviderView ? "ALPACA PAPER TRADING" : "SIMULATED MONITORING"}
+              © TRADING WENS ·{" "}
+              {isProviderView ? "ALPACA SIMULATION TRADING" : "SIMULATED MONITORING"}
             </span>
             <span>Research interface only. Not financial advice.</span>
           </footer>
@@ -379,13 +380,15 @@ function MonitoringSignals({
         </div>
       </div>
       <div className="mt-6 overflow-x-auto">
-        <div className="feed-table min-w-[670px]">
+        <div className="feed-table min-w-[1040px]">
           <div className="feed-row feed-head">
             <span>EVENT / SOURCE</span>
             <span>ASSET</span>
+            <span>RISK FACTOR</span>
             <span>SENTIMENT</span>
             <span>IMPACT</span>
-            <span>SEVERITY</span>
+            <span>CONFIDENCE</span>
+            <span>RISK</span>
             <span />
           </div>
           {shown.map((event) => (
@@ -407,17 +410,21 @@ function MonitoringSignals({
                   {event.company}
                 </span>
               </span>
+              <span className="text-left text-[10px] leading-4 text-muted-foreground">
+                {event.eventType}
+              </span>
               <span
                 className={
                   event.sentiment < 0
-                    ? "text-left text-xs text-destructive"
-                    : "text-left text-xs text-primary"
+                    ? "text-left text-xs text-loss"
+                    : "text-left text-xs text-profit"
                 }
               >
                 {event.sentiment > 0 ? "+" : ""}
                 {event.sentiment.toFixed(2)}
               </span>
               <span className="text-left text-xs">{event.impact}/10</span>
+              <span className="text-left text-xs tabular-nums">{event.confidence}%</span>
               <span className={`severity severity-${event.severity.toLowerCase()}`}>
                 {event.severity}
               </span>
@@ -436,7 +443,7 @@ function DemoLocked() {
       <ShieldAlert size={30} className="text-primary" />
       <h2 className="mt-4 text-xl font-semibold">Sign in for live account data</h2>
       <p className="mt-2 max-w-md text-sm text-muted-foreground">
-        Portfolio, risk, market data, and paper trading require an authenticated workspace.
+        Portfolio, risk, market data, and simulation trading require an authenticated workspace.
       </p>
       <Button asChild className="mt-5">
         <Link to="/auth">
@@ -454,9 +461,9 @@ function viewDescription(view: string) {
     case "Live risk feed":
       return "Live movement, intraday range, and position context across all 30 tracked stocks.";
     case "Portfolio status":
-      return "Overall and individual risk calculated from real Alpaca paper-account positions.";
+      return "Overall and individual risk calculated from Alpaca simulation-account positions.";
     case "Live Trading":
-      return "Search the tracked top 30, analyze interactive live candlesticks, and submit confirmed paper orders.";
+      return "Search the tracked top 30, analyze interactive live candlesticks, and submit confirmed simulation orders.";
     case "Alerts":
       return "Priority simulated monitoring alerts.";
     default:

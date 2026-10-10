@@ -156,7 +156,7 @@ export function StockDetailPage({ symbol }: { symbol: string }) {
                   {priceFormatter.format(snapshot.price)}
                 </div>
                 <div
-                  className={`mt-2 inline-flex items-center gap-1 text-sm tabular-nums ${positive ? "text-primary" : "text-destructive"}`}
+                  className={`mt-2 inline-flex items-center gap-1 text-sm tabular-nums ${positive ? "text-profit" : "text-loss"}`}
                 >
                   <ArrowUpRight
                     size={15}

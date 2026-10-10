@@ -131,9 +131,7 @@ export function AccountOverview() {
               <div className="mt-4 text-lg font-semibold tabular-nums">
                 {money.format(stock.price)}
               </div>
-              <div
-                className={`mt-1 text-xs ${stock.change >= 0 ? "text-primary" : "text-destructive"}`}
-              >
+              <div className={`mt-1 text-xs ${stock.change >= 0 ? "text-profit" : "text-loss"}`}>
                 {stock.change >= 0 ? "+" : ""}
                 {stock.change.toFixed(2)}% today
               </div>
@@ -166,7 +164,7 @@ export function AccountOverview() {
                     {item.confidence}% model confidence
                   </div>
                 </div>
-                <span className={item.score >= 0 ? "text-primary" : "text-destructive"}>
+                <span className={item.score >= 0 ? "text-profit" : "text-loss"}>
                   {item.score >= 0 ? "+" : ""}
                   {item.score.toFixed(2)}
                 </span>
@@ -264,7 +262,7 @@ export function LiveRiskFeed() {
                   {snapshot.available ? money.format(snapshot.price) : "—"}
                 </span>
                 <span
-                  className={`tabular-nums ${snapshot.change_percent >= 0 ? "text-primary" : "text-destructive"}`}
+                  className={`tabular-nums ${snapshot.change_percent >= 0 ? "text-profit" : "text-loss"}`}
                 >
                   {snapshot.available ? (
                     <>
@@ -436,7 +434,7 @@ function Metric({
     <div className="metric">
       <div className="label text-muted-foreground">{label}</div>
       <div
-        className={`mt-5 text-2xl font-semibold tabular-nums ${tone === "positive" ? "text-primary" : tone === "negative" ? "text-destructive" : ""}`}
+        className={`mt-5 text-2xl font-semibold tabular-nums ${tone === "positive" ? "text-profit" : tone === "negative" ? "text-loss" : ""}`}
       >
         {value}
       </div>
@@ -457,7 +455,7 @@ function Value({
     <div>
       <div className="text-[10px] text-muted-foreground">{label}</div>
       <div
-        className={`mt-1 font-medium tabular-nums ${tone === "positive" ? "text-primary" : tone === "negative" ? "text-destructive" : ""}`}
+        className={`mt-1 font-medium tabular-nums ${tone === "positive" ? "text-profit" : tone === "negative" ? "text-loss" : ""}`}
       >
         {value}
       </div>
@@ -486,7 +484,7 @@ function SectionHeading({
 function ProviderStamp({ asOf }: { asOf: string }) {
   return (
     <div className="mt-5 flex flex-wrap justify-between gap-2 text-[11px] text-muted-foreground">
-      <span>ALPACA PAPER ACCOUNT · LIVE PROVIDER DATA</span>
+      <span>ALPACA SIMULATION ACCOUNT · LIVE PROVIDER DATA</span>
       <span>Updated {new Date(asOf).toLocaleString()}</span>
     </div>
   );

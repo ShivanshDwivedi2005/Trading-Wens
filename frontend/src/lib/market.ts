@@ -13,6 +13,7 @@ export type RiskEvent = {
   severity: "Critical" | "High" | "Moderate" | "Low";
   exposure: string;
   direction: string;
+  sourceUrl: string;
 };
 
 export const initialEvents: RiskEvent[] = [
@@ -32,6 +33,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "Critical",
     exposure: "$248,400",
     direction: "Downside risk",
+    sourceUrl: "https://www.bis.gov/",
   },
   {
     id: 2,
@@ -49,6 +51,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "Moderate",
     exposure: "$156,200",
     direction: "Upside potential",
+    sourceUrl: "https://www.apple.com/newsroom/",
   },
   {
     id: 3,
@@ -66,6 +69,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "High",
     exposure: "$92,800",
     direction: "Downside risk",
+    sourceUrl: "https://bsky.app/search?q=Tesla",
   },
   {
     id: 4,
@@ -83,6 +87,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "Low",
     exposure: "$184,600",
     direction: "Upside potential",
+    sourceUrl: "https://www.microsoft.com/en-us/Investor/",
   },
   {
     id: 5,
@@ -100,6 +105,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "High",
     exposure: "$113,500",
     direction: "Downside risk",
+    sourceUrl: "https://www.federalreserve.gov/newsevents.htm",
   },
   {
     id: 6,
@@ -117,6 +123,7 @@ export const initialEvents: RiskEvent[] = [
     severity: "Low",
     exposure: "$78,900",
     direction: "Upside potential",
+    sourceUrl: "https://ir.aboutamazon.com/",
   },
 ];
 
