@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { ArrowRight, ExternalLink, RefreshCw, ShieldCheck, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchMarketSnapshots } from "@/lib/market-api";
+import { fetchMarketSnapshots, type MarketSnapshot } from "@/lib/market-api";
 import { fetchMarketNews } from "@/lib/news-api";
 import { portfolioRisk, positionRisk, sentimentWatchlist } from "@/lib/portfolio-risk";
 import { fetchTradingPortfolio } from "@/lib/trading-api";
@@ -215,72 +215,123 @@ export function AccountOverview() {
 
 export function LiveRiskFeed() {
   const portfolio = usePortfolioQuery();
-  if (portfolio.error)
-    return <DataError error={portfolio.error} onRetry={() => void portfolio.refetch()} />;
-  if (portfolio.isPending) return <DashboardSkeleton />;
-  const positions = portfolio.data.positions;
+  const snapshots = useSnapshotsQuery();
+  if (snapshots.error)
+    return <DataError error={snapshots.error} onRetry={() => void snapshots.refetch()} />;
+  if (snapshots.isPending) return <DashboardSkeleton />;
+  const positions = portfolio.data?.positions ?? [];
+  const positionsBySymbol = new Map(positions.map((position) => [position.symbol, position]));
+
   return (
     <section className="panel">
       <SectionHeading
-        eyebrow="LIVE POSITION RISK"
-        title="Invested-stock risk feed"
-        description="Rule-based exposure risk calculated from live Alpaca position value, P/L, and daily movement."
+        eyebrow="TOP 30 LIVE MARKET RISK"
+        title="Large-cap risk feed"
+        description="Every maintained top-30 stock stays visible. Live price movement and intraday range drive the market-risk signal; open Alpaca positions are overlaid when available."
       />
+      {portfolio.error && (
+        <div
+          role="status"
+          className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded border border-accent/30 bg-accent/5 px-4 py-3 text-xs"
+        >
+          <span>Live market risk is available, but the position overlay could not be loaded.</span>
+          <Button variant="outline" size="sm" onClick={() => void portfolio.refetch()}>
+            <RefreshCw size={13} /> Retry positions
+          </Button>
+        </div>
+      )}
       <div className="mt-6 overflow-x-auto">
-        <div className="risk-table min-w-[880px]">
-          <div className="risk-row risk-head">
-            <span>Position</span>
-            <span>Market value</span>
+        <div className="risk-table min-w-[1080px]">
+          <div className="risk-row market-risk-row risk-head">
+            <span>Company</span>
+            <span>Last</span>
             <span>Today</span>
+            <span>Day range</span>
+            <span>Volume</span>
             <span>Risk</span>
-            <span>Confidence</span>
-            <span>Best action</span>
+            <span>Position / analysis</span>
           </div>
-          {positions.map((position) => {
-            const risk = positionRisk(position, portfolio.data.account.portfolio_value);
+          {snapshots.data.data.map((snapshot) => {
+            const risk = marketSnapshotRisk(snapshot);
+            const position = positionsBySymbol.get(snapshot.symbol);
             return (
-              <div className="risk-row risk-entry" key={position.symbol}>
+              <div className="risk-row market-risk-row risk-entry" key={snapshot.symbol}>
                 <span>
-                  <strong>{position.symbol}</strong>
-                  <small>
-                    {position.quantity.toLocaleString()} shares · {risk.weight.toFixed(1)}% weight
-                  </small>
+                  <strong>{snapshot.symbol}</strong>
+                  <small>{snapshot.name}</small>
                 </span>
-                <span className="tabular-nums">{money.format(position.market_value)}</span>
+                <span className="tabular-nums">
+                  {snapshot.available ? money.format(snapshot.price) : "—"}
+                </span>
                 <span
-                  className={`tabular-nums ${position.change_today >= 0 ? "text-primary" : "text-destructive"}`}
+                  className={`tabular-nums ${snapshot.change_percent >= 0 ? "text-primary" : "text-destructive"}`}
                 >
-                  {position.change_today >= 0 ? "+" : ""}
-                  {position.change_today.toFixed(2)}%
+                  {snapshot.available ? (
+                    <>
+                      {snapshot.change_percent >= 0 ? "+" : ""}
+                      {snapshot.change_percent.toFixed(2)}%
+                    </>
+                  ) : (
+                    "Unavailable"
+                  )}
                 </span>
+                <span className="tabular-nums">
+                  {snapshot.available
+                    ? `${money.format(snapshot.low)} – ${money.format(snapshot.high)}`
+                    : "—"}
+                </span>
+                <span className="tabular-nums">{formatVolume(snapshot.volume)}</span>
                 <span>
                   <span className={`risk-badge risk-${risk.level.toLowerCase()}`}>
                     {risk.level} · {risk.score.toFixed(1)}
                   </span>
                 </span>
-                <span className="tabular-nums">{risk.confidence}%</span>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-11 justify-start px-2 text-xs"
-                >
-                  <Link to="/orders" search={{ symbol: position.symbol }}>
-                    <ArrowRight size={13} className="text-primary" />
-                    {risk.action}
-                  </Link>
-                </Button>
+                <span className="flex items-center justify-between gap-2">
+                  <span className={position ? "position-tag" : "watch-tag"}>
+                    {position ? `${position.quantity.toLocaleString()} shares` : "Watch"}
+                  </span>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-11 justify-start px-2 text-xs"
+                  >
+                    <Link to="/stocks/$symbol" params={{ symbol: snapshot.symbol }}>
+                      <ArrowRight size={13} className="text-primary" />
+                      Analyze
+                    </Link>
+                  </Button>
+                </span>
               </div>
             );
           })}
-          {!positions.length && (
-            <EmptyState text="The Alpaca paper account has no open positions." />
+          {!snapshots.data.data.length && (
+            <EmptyState text="No tracked market snapshots are available yet." />
           )}
         </div>
       </div>
-      <ProviderStamp asOf={portfolio.data.as_of} />
+      <ProviderStamp asOf={snapshots.data.as_of} />
     </section>
   );
+}
+
+function marketSnapshotRisk(snapshot: MarketSnapshot) {
+  if (!snapshot.available || snapshot.price <= 0) {
+    return { level: "Low" as const, score: 0 };
+  }
+
+  const intradayRange = ((snapshot.high - snapshot.low) / snapshot.price) * 100;
+  const score = Math.min(10, Math.abs(snapshot.change_percent) * 1.4 + intradayRange * 0.8);
+  const level = score >= 7 ? "High" : score >= 4 ? "Moderate" : "Low";
+
+  return { level, score };
+}
+
+function formatVolume(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 export function PortfolioStatus() {

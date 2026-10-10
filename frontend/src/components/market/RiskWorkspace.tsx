@@ -452,11 +452,11 @@ function viewDescription(view: string) {
     case "Overview":
       return "Your invested stocks, focused market watchlist, sentiment context, and account-relevant news.";
     case "Live risk feed":
-      return "Current position risk, calculation confidence, exposure, and review actions.";
+      return "Live movement, intraday range, and position context across all 30 tracked stocks.";
     case "Portfolio status":
       return "Overall and individual risk calculated from real Alpaca paper-account positions.";
     case "Live Trading":
-      return "Search tradable stocks, inspect live candlesticks, and submit confirmed paper orders.";
+      return "Search the tracked top 30, analyze interactive live candlesticks, and submit confirmed paper orders.";
     case "Alerts":
       return "Priority simulated monitoring alerts.";
     default:
