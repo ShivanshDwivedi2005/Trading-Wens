@@ -28,7 +28,7 @@ func (h *SocialHandler) Latest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.service == nil {
-		writeError(w, http.StatusServiceUnavailable, "x_not_configured", "X market conversation is not configured")
+		writeError(w, http.StatusServiceUnavailable, "bluesky_not_configured", "Bluesky market conversation is not configured")
 		return
 	}
 	symbol := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("symbol")))
@@ -42,7 +42,7 @@ func (h *SocialHandler) Latest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "social_unavailable", "X market conversation is temporarily unavailable")
+		writeError(w, http.StatusBadGateway, "social_unavailable", "Bluesky market conversation is temporarily unavailable")
 		return
 	}
 	w.Header().Set("Cache-Control", "private, max-age=120")

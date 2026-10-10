@@ -32,9 +32,8 @@ type Config struct {
 	GDELTAPIURL        string
 	NLPAPIURL          string
 	NLPRequestTimeout  time.Duration
-	XEnabled           bool
-	XAPIURL            string
-	XBearerToken       string
+	BlueskyEnabled     bool
+	BlueskyAPIURL      string
 	CORSAllowedOrigins []string
 }
 
@@ -58,15 +57,11 @@ func Load() (Config, error) {
 		AlpacaDataFeed:     valueOrDefault("ALPACA_DATA_FEED", "iex"),
 		GDELTAPIURL:        strings.TrimRight(valueOrDefault("GDELT_API_URL", "https://api.gdeltproject.org/api/v2/doc/doc"), "/"),
 		NLPAPIURL:          strings.TrimRight(firstValue("FINBERT_INFERENCE_URL", "NLP_API_URL"), "/"),
-		XAPIURL:            strings.TrimRight(firstValue("X_API_BASE_URL", "X_API_URL"), "/"),
-		XBearerToken:       firstValue("X_API_BEARER_TOKEN", "X_BEARER_TOKEN"),
+		BlueskyAPIURL:      strings.TrimRight(valueOrDefault("BLUESKY_API_BASE_URL", "https://public.api.bsky.app"), "/"),
 		CORSAllowedOrigins: splitList(valueOrDefault("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173")),
 	}
 	if cfg.NLPAPIURL == "" {
 		cfg.NLPAPIURL = "http://127.0.0.1:8090"
-	}
-	if cfg.XAPIURL == "" {
-		cfg.XAPIURL = "https://api.x.com"
 	}
 
 	var missing []string
@@ -121,21 +116,18 @@ func Load() (Config, error) {
 	if !validHTTPURL(cfg.NLPAPIURL) {
 		return Config{}, errors.New("FINBERT_INFERENCE_URL must be an HTTP or HTTPS URL")
 	}
-	if !validHTTPURL(cfg.XAPIURL) {
-		return Config{}, errors.New("X_API_BASE_URL must be an HTTP or HTTPS URL")
+	if !validHTTPURL(cfg.BlueskyAPIURL) {
+		return Config{}, errors.New("BLUESKY_API_BASE_URL must be an HTTP or HTTPS URL")
 	}
-	xEnabled, err := strconv.ParseBool(firstValue("X_API_ENABLED", "X_ENABLED"))
-	if firstValue("X_API_ENABLED", "X_ENABLED") == "" {
-		xEnabled = false
+	blueskyEnabled, err := strconv.ParseBool(firstValue("BLUESKY_API_ENABLED"))
+	if firstValue("BLUESKY_API_ENABLED") == "" {
+		blueskyEnabled = true
 		err = nil
 	}
 	if err != nil {
-		return Config{}, errors.New("X_API_ENABLED must be true or false")
+		return Config{}, errors.New("BLUESKY_API_ENABLED must be true or false")
 	}
-	cfg.XEnabled = xEnabled
-	if cfg.XEnabled && cfg.XBearerToken == "" {
-		return Config{}, errors.New("X_API_BEARER_TOKEN is required when X_API_ENABLED is true")
-	}
+	cfg.BlueskyEnabled = blueskyEnabled
 	if !validAlpacaFeed(cfg.AlpacaDataFeed) {
 		return Config{}, fmt.Errorf("unsupported ALPACA_DATA_FEED %q", cfg.AlpacaDataFeed)
 	}

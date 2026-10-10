@@ -23,7 +23,7 @@ func TestSocialHandler(t *testing.T) {
 		if symbol != "AAPL" {
 			t.Fatalf("unexpected symbol: %s", symbol)
 		}
-		return domain.SocialFeed{Data: []domain.SocialPost{{ID: "one"}}, Source: "x", Symbol: symbol, Count: 1}, nil
+		return domain.SocialFeed{Data: []domain.SocialPost{{ID: "one"}}, Source: "bluesky", Symbol: symbol, Count: 1}, nil
 	}})
 	res := httptest.NewRecorder()
 	handler.Latest(res, httptest.NewRequest(http.MethodGet, "/api/v1/social?symbol=aapl", nil))

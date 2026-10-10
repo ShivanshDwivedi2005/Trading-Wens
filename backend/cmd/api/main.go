@@ -11,11 +11,11 @@ import (
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/market"
 	newsservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/news"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/alpaca"
+	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/bluesky"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/database"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/gdelt"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/googleauth"
 	"github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/nlp"
-	xprovider "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/platform/x"
 	tradingservice "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/trading"
 	httpapi "github.com/ShivanshDwivedi2005/Trading-Wens/backend/internal/transport/http"
 )
@@ -94,12 +94,12 @@ func main() {
 	tradingService := tradingservice.NewService(tradingClient, databaseClient, newsService)
 	tradingHandler := httpapi.NewTradingHandler(tradingService)
 	var socialService httpapi.SocialService
-	if cfg.XEnabled {
-		xClient, err := xprovider.NewClient(cfg.XAPIURL, cfg.XBearerToken, market.SP500TopThirty, nil)
+	if cfg.BlueskyEnabled {
+		blueskyClient, err := bluesky.NewClient(cfg.BlueskyAPIURL, market.SP500TopThirty, nil)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		socialService = xClient
+		socialService = blueskyClient
 	}
 	socialHandler := httpapi.NewSocialHandler(socialService)
 

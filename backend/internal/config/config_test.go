@@ -1,9 +1,6 @@
 package config
 
-import (
-	"os"
-	"testing"
-)
+import "testing"
 
 func TestNormalizeAlpacaTradingURL(t *testing.T) {
 	tests := []struct {
@@ -38,37 +35,24 @@ func TestNormalizeAlpacaTradingURL(t *testing.T) {
 	}
 }
 
-func TestXConfigurationRequiresTokenWhenEnabled(t *testing.T) {
-	keys := []string{
-		"DATABASE_URL", "GOOGLE_OAUTH_CLIENT_ID",
-		"GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "APP_SESSION_SIGNING_KEY",
-		"ALPACA_API_KEY", "ALPACA_SECRET_KEY", "X_API_ENABLED", "X_API_BEARER_TOKEN",
-	}
-	previous := make(map[string]string, len(keys))
-	for _, key := range keys {
-		previous[key] = os.Getenv(key)
-	}
-	t.Cleanup(func() {
-		for _, key := range keys {
-			_ = os.Setenv(key, previous[key])
-		}
-	})
+func TestBlueskyConfigurationIsKeylessAndEnabledByDefault(t *testing.T) {
 	values := map[string]string{
 		"DATABASE_URL":           "postgresql://user:password@host.neon.tech/trading?sslmode=require",
 		"GOOGLE_OAUTH_CLIENT_ID": "client", "GOOGLE_OAUTH_CLIENT_SECRET": "secret",
 		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
 		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
 		"ALPACA_API_KEY":            "key", "ALPACA_SECRET_KEY": "secret",
-		"X_API_ENABLED": "true", "X_API_BEARER_TOKEN": "",
 	}
 	for key, value := range values {
-		if err := os.Setenv(key, value); err != nil {
-			t.Fatal(err)
-		}
+		t.Setenv(key, value)
 	}
-	_, err := Load()
-	if err == nil || err.Error() != "X_API_BEARER_TOKEN is required when X_API_ENABLED is true" {
-		t.Fatalf("unexpected error: %v", err)
+	t.Setenv("BLUESKY_API_ENABLED", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.BlueskyEnabled || cfg.BlueskyAPIURL != "https://public.api.bsky.app" {
+		t.Fatalf("unexpected Bluesky configuration: %#v", cfg)
 	}
 }
 
@@ -79,7 +63,7 @@ func TestCanonicalEnvironmentNames(t *testing.T) {
 		"GOOGLE_OAUTH_REDIRECT_URI": "http://localhost:8080/auth/google/callback",
 		"APP_SESSION_SIGNING_KEY":   "12345678901234567890123456789012",
 		"ALPACA_API_KEY":            "key", "ALPACA_SECRET_KEY": "secret",
-		"X_API_ENABLED": "false",
+		"BLUESKY_API_ENABLED": "false",
 	}
 	for key, value := range values {
 		t.Setenv(key, value)
