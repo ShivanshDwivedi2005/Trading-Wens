@@ -63,19 +63,19 @@ paths:
           description: Authentication or news provider unavailable
   /api/v1/social:
     get:
-      summary: Get recent X posts for one stock
+      summary: Get recent Bluesky posts for one stock
       parameters:
         - in: query
           name: symbol
           required: true
           schema:
             type: string
-          description: Stock ticker used to build the recent-search query
+          description: Stock ticker used to build the public post-search query
       security:
         - cookieAuth: []
       responses:
         "200":
-          description: Recent normalized X posts in provider order
+          description: Recent normalized and filtered Bluesky posts in provider order
           content:
             application/json:
               schema:
@@ -87,9 +87,9 @@ paths:
         "404":
           description: Invalid symbol format
         "502":
-          description: X recent-search API unavailable
+          description: Bluesky public search API unavailable
         "503":
-          description: X source is not configured
+          description: Bluesky source is disabled
   /api/v1/market/stocks/{symbol}/history:
     get:
       summary: Get recent Alpaca bars for one valid stock ticker
@@ -644,7 +644,7 @@ components:
           format: date-time
         source:
           type: string
-          const: x
+          const: bluesky
         symbol:
           type: string
         count:

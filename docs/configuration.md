@@ -56,13 +56,12 @@ The model weights are not committed because they are generated deployment artifa
 
 The `/api/v1/news` endpoint requests GDELT and Alpaca News concurrently, normalizes their records, removes duplicate URLs, and runs one sentiment batch across the combined feed. If one news provider fails, the healthy provider still supplies the response. If the model service fails, articles remain available without a fabricated sentiment value.
 
-## Optional X social data
+## Keyless Bluesky social data
 
-- `X_API_ENABLED`: leave `false` when X data is not configured.
-- `X_API_BEARER_TOKEN`: create a developer project and app in the [X Developer Portal](https://developer.x.com/en/portal/dashboard), enable a plan with recent-search access, and copy the app bearer token.
-- `X_API_BASE_URL`: keep the default unless using an approved compatible gateway.
+- `BLUESKY_API_ENABLED`: defaults to `true`; set it to `false` to disable the social feed.
+- `BLUESKY_API_BASE_URL`: keep `https://public.api.bsky.app` unless using an approved compatible Bluesky AppView.
 
-X posts remain a separate social feed. They are not included in news sentiment until the trained model contract is explicitly extended to social content.
+The backend searches recent English-language posts by cashtag, ticker, company name, and stock terms, then filters unrelated matches before exposing at most ten posts. Bluesky posts remain a separate social feed and are not included in news sentiment until the trained model contract is explicitly extended to social content. Public Bluesky reads do not require an API key.
 
 ## Network and session settings
 
@@ -72,4 +71,4 @@ X posts remain a separate social feed. They are not included in news sentiment u
 - `AUTH_SESSION_TTL_SECONDS`: signed application session lifetime from 300 seconds to seven days.
 - `VITE_API_BASE_URL`: optional browser-visible backend origin when frontend and backend are deployed separately.
 
-The backend temporarily accepts previous Google, Alpaca, NLP, and X variable names as aliases so existing local environments keep working. New deployments should use the canonical names in `.env.example`.
+The backend temporarily accepts previous Google, Alpaca, and NLP variable names as aliases so existing local environments keep working. New deployments should use the canonical names in `.env.example`.

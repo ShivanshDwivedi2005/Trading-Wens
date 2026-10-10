@@ -43,9 +43,9 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
 - Google OpenID Connect authentication with signed HTTP-only sessions
-- Go backend with Google OAuth, Neon PostgreSQL persistence, Alpaca market/trading/news APIs, GDELT news, and X recent search
+- Go backend with Google OAuth, Neon PostgreSQL persistence, Alpaca market/trading/news APIs, GDELT news, and Bluesky public post search
 - Python FinBERT inference service backed by the trained Trading Wens sentiment checkpoint
 
 Simulation fixtures live in `frontend/src/lib/market.ts`. They must remain visibly identified as illustrative data until real provider integrations are implemented.
 
-The authenticated workspace uses the configured Alpaca paper account for its overview, position-risk feed, portfolio-risk status, searchable asset list, live candlesticks, confirmed paper orders, and news. Account, position, order, fill, and audit activity is persisted per signed-in user and provider account. GDELT adds global company coverage. The backend deduplicates the combined news feed and enriches every available headline with calibrated sentiment from the trained model. When `X_API_ENABLED=true`, the X recent-search API is the separate social source and supplies per-stock market conversation. Simulated monitoring stays visibly separated from provider data.
+The authenticated workspace uses the configured Alpaca paper account for its overview, position-risk feed, portfolio-risk status, searchable asset list, live candlesticks, confirmed paper orders, and news. Account, position, order, fill, and audit activity is persisted per signed-in user and provider account. GDELT adds global company coverage. The backend deduplicates the combined news feed and enriches every available headline with calibrated sentiment from the trained model. Bluesky's public post search supplies a separate, keyless per-stock market-conversation feed. Simulated monitoring stays visibly separated from provider data.
