@@ -528,6 +528,11 @@ h3,
   align-items: center;
   gap: 14px;
 }
+.market-risk-row {
+  grid-template-columns:
+    minmax(180px, 1.25fr) 105px 90px minmax(170px, 1fr) 90px 125px
+    minmax(180px, 1fr);
+}
 .risk-head {
   border-bottom: 1px solid var(--border);
   padding: 0 12px 12px;
@@ -669,12 +674,79 @@ h3,
   background: color-mix(in oklab, var(--background) 70%, transparent);
   padding: 8px;
 }
-.candlestick-wrap g:focus {
+.chart-toolbar,
+.chart-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.chart-toolbar {
+  min-height: 44px;
+  padding: 2px 4px 8px;
+}
+.chart-readout {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 12px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.chart-readout strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.candlestick-wrap svg {
+  cursor: crosshair;
+  border-radius: 3px;
   outline: none;
 }
-.candlestick-wrap g:focus line,
-.candlestick-wrap g:focus rect {
-  filter: drop-shadow(0 0 3px var(--primary));
+.candlestick-wrap svg:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.chart-status {
+  border-top: 1px solid var(--border);
+  padding: 8px 4px 2px;
+  color: var(--muted-foreground);
+  font-size: 9px;
+}
+.chart-data-table {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding: 10px 4px 4px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.chart-data-table summary {
+  cursor: pointer;
+  color: var(--foreground);
+}
+.chart-data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.chart-data-table th,
+.chart-data-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 8px;
+  text-align: right;
+  white-space: nowrap;
+}
+.chart-data-table th:first-child,
+.chart-data-table td:first-child {
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .chart-toolbar,
+  .chart-status {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 .trading-insight-grid {
   display: grid;
