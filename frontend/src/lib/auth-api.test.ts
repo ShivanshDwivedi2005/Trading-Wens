@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseAuthSession } from "./auth-api";
+import { apiURL, parseAuthSession } from "./auth-api";
+
+it("keeps development authentication requests on the frontend origin", () => {
+  expect(apiURL("/api/v1/auth/session")).toBe("/api/v1/auth/session");
+});
 
 describe("authentication contract", () => {
   it("accepts a backend user session", () => {

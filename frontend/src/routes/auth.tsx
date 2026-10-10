@@ -129,7 +129,7 @@ function AuthPage() {
             </p>
           )}
 
-          <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
+          <form className="mt-6 space-y-4" onSubmit={submit}>
             {signup ? (
               <>
                 <AuthField

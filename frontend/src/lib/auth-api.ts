@@ -17,6 +17,8 @@ export function parseAuthSession(value: unknown) {
 }
 
 function apiOrigin() {
+  if (import.meta.env.DEV) return "";
+
   return (import.meta.env["VITE_API_BASE_URL"]?.trim() ?? "")
     .replace(/\/$/, "")
     .replace(/\/api\/v1$/, "");
