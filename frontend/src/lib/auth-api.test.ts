@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseAuthSession } from "./auth-api";
 
-describe("Google authentication contract", () => {
-  it("accepts the backend Google user session", () => {
+describe("authentication contract", () => {
+  it("accepts a backend user session", () => {
     const session = parseAuthSession({
       user: {
         id: "google-user-1",
