@@ -36,7 +36,35 @@ func (c *Client) Close() {
 }
 
 func (c *Client) Ping(ctx context.Context) error {
-	return c.pool.Ping(ctx)
+	if err := c.pool.Ping(ctx); err != nil {
+		return err
+	}
+
+	var missingObjects string
+	if err := c.pool.QueryRow(ctx, `
+		with required(name, present) as (values
+			('public.profiles', to_regclass('public.profiles') is not null),
+			('public.user_credentials', to_regclass('public.user_credentials') is not null),
+			('public.broker_accounts', to_regclass('public.broker_accounts') is not null),
+			('public.account_snapshots', to_regclass('public.account_snapshots') is not null),
+			('public.positions', to_regclass('public.positions') is not null),
+			('public.position_snapshots', to_regclass('public.position_snapshots') is not null),
+			('public.orders', to_regclass('public.orders') is not null),
+			('public.fills', to_regclass('public.fills') is not null),
+			('public.order_audit_events', to_regclass('public.order_audit_events') is not null),
+			('public.sync_trading_state(text,jsonb,jsonb)', to_regprocedure('public.sync_trading_state(text,jsonb,jsonb)') is not null),
+			('public.get_trading_state(text,text,text)', to_regprocedure('public.get_trading_state(text,text,text)') is not null)
+		)
+		select coalesce(string_agg(name, ', ' order by name), '')
+		from required
+		where not present
+	`).Scan(&missingObjects); err != nil {
+		return fmt.Errorf("check database migrations: %w", err)
+	}
+	if missingObjects != "" {
+		return fmt.Errorf("database migrations are missing required objects: %s; apply 001_trading_ledger.sql and 002_password_auth.sql", missingObjects)
+	}
+	return nil
 }
 
 func (c *Client) EnsureUser(ctx context.Context, user domain.User) error {
@@ -116,18 +144,38 @@ func (c *Client) SyncTradingState(ctx context.Context, user domain.User, portfol
 	if err := c.EnsureUser(ctx, user); err != nil {
 		return fmt.Errorf("ensure database profile: %w", err)
 	}
-	portfolioJSON, err := json.Marshal(portfolio)
+	portfolioJSON, monitorJSON, err := encodeTradingState(portfolio, monitor)
 	if err != nil {
-		return fmt.Errorf("encode portfolio: %w", err)
-	}
-	monitorJSON, err := json.Marshal(monitor)
-	if err != nil {
-		return fmt.Errorf("encode order monitor: %w", err)
+		return err
 	}
 	if _, err := c.pool.Exec(ctx, "select public.sync_trading_state($1, $2::jsonb, $3::jsonb)", user.ID, portfolioJSON, monitorJSON); err != nil {
 		return fmt.Errorf("sync trading state: %w", err)
 	}
 	return nil
+}
+
+func encodeTradingState(portfolio domain.Portfolio, monitor domain.OrderMonitor) ([]byte, []byte, error) {
+	if portfolio.Positions == nil {
+		portfolio.Positions = []domain.Position{}
+	}
+	if monitor.Orders == nil {
+		monitor.Orders = []domain.Order{}
+	}
+	if monitor.Fills == nil {
+		monitor.Fills = []domain.Fill{}
+	}
+	if monitor.AuditTrail == nil {
+		monitor.AuditTrail = []domain.OrderAuditEvent{}
+	}
+	portfolioJSON, err := json.Marshal(portfolio)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode portfolio: %w", err)
+	}
+	monitorJSON, err := json.Marshal(monitor)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode order monitor: %w", err)
+	}
+	return portfolioJSON, monitorJSON, nil
 }
 
 type tradingState struct {
