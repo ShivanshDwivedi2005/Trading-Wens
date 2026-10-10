@@ -105,7 +105,7 @@ The authenticated order monitor reads the configured Alpaca paper account only. 
 - **Fill Book** shows execution time, quantity, fill price, the current open-position mark when available, and the signed mark delta. Mark delta is contextual information, not realized profit or loss.
 - **Audit Trail** orders submission, status, cancellation, rejection, expiration, and execution messages by provider timestamp. Every row identifies whether its source was the Alpaca order API or account-activity API.
 
-Profiles are created idempotently on the first authenticated Google session. The managed authentication schema is not modified. Position and account snapshots are retained once per minute, current positions are replaced transactionally by the database function, order state is idempotently updated, fills use provider IDs for deduplication, and audit events are append-only.
+Profiles are created during password registration or on the first authenticated Google session. Password hashes are stored separately from profiles, and no managed authentication schema is modified. Position and account snapshots are retained once per minute, current positions are replaced transactionally by the database function, order state is idempotently updated, fills use provider IDs for deduplication, and audit events are append-only.
 
 The position outlook is a bounded directional scenario derived from current Alpaca unrealized P/L, today's mark movement, and confidence-weighted sentiment for matching Alpaca/GDELT headlines. It reports its score, confidence, reasons, and evidence sources. It is not presented as a guaranteed probability, exchange risk calculation, or investment recommendation.
 

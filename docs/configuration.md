@@ -10,14 +10,15 @@ Copy `.env.example` to `.env` and fill only the values for services you run. Kee
 - `DATABASE_CONNECT_TIMEOUT_SECONDS`: maximum startup connection time. The default is 15 seconds.
 - `DATABASE_MIN_CONNECTIONS` and `DATABASE_MAX_CONNECTIONS`: backend pool limits. Defaults are 1 and 10.
 
-Before starting the API, run `backend/migrations/001_trading_ledger.sql` once in the Neon SQL Editor. The backend performs a startup check and refuses to serve authenticated trading data when the schema or database credentials are unavailable.
+Before starting the API, run `backend/migrations/001_trading_ledger.sql` and then `backend/migrations/002_password_auth.sql` in the Neon SQL Editor. The backend performs a startup check and refuses to serve authenticated trading data when the database credentials are unavailable.
 
-The migration creates Google-authenticated application profiles without modifying an external authentication schema. All order, fill, audit, account, and position rows are scoped by the Google user ID and provider account ID. A provider account can be owned by only one application user, preventing the globally configured paper account from being exposed through another login. Current positions are upserted, position/account history is sampled once per minute, fills are idempotent, and audit events are append-only.
+The migrations create application profiles and bcrypt password credentials without modifying an external authentication schema. All order, fill, audit, account, and position rows are scoped by application user ID and provider account ID. A provider account can be owned by only one application user. Current positions are upserted, position/account history is sampled once per minute, fills are idempotent, and audit events are append-only.
 
 The current Alpaca Trading API integration connects one paper account through server environment variables. Supporting independent Alpaca accounts for multiple application users requires a provider account-connection flow (Alpaca OAuth or Broker API); do not copy one account's API keys into multiple user records.
 
 ### Google OAuth
 
+- `GOOGLE_OAUTH_ENABLED`: set to `true` only after all Google OAuth values are configured. Password login remains available when this is `false`.
 - `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`: create a Web application credential in [Google Cloud Console](https://console.cloud.google.com/apis/credentials). Add the exact URI from `GOOGLE_OAUTH_REDIRECT_URI` as an authorized redirect URI.
 - `GOOGLE_OAUTH_REDIRECT_URI`: use `http://localhost:8080/auth/google/callback` locally and the HTTPS backend callback in production.
 - `APP_SESSION_SIGNING_KEY`: generate at least 32 random characters. PowerShell can generate a suitable value with `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))`.

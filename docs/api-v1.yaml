@@ -5,6 +5,42 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /api/v1/auth/providers:
+    get:
+      summary: Get enabled authentication methods
+      responses:
+        "200":
+          description: Authentication provider availability
+  /api/v1/auth/signup:
+    post:
+      summary: Create an account with username, email, and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: Account and HTTP-only application session created
+        "400":
+          description: Invalid signup details
+        "409":
+          description: Email or username already registered
+  /api/v1/auth/login:
+    post:
+      summary: Sign in with email or username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: HTTP-only application session created
+        "401":
+          description: Invalid credentials
   /api/v1/auth/google/start:
     get:
       summary: Start Google OpenID Connect authorization with PKCE
@@ -19,7 +55,7 @@ paths:
           description: Redirect to the authenticated dashboard or back to sign-in with an error
   /api/v1/auth/session:
     get:
-      summary: Get the current Google-authenticated user
+      summary: Get the current authenticated user
       security:
         - cookieAuth: []
       responses:
@@ -58,7 +94,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/NewsFeedResponse"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "502":
           description: Authentication or news provider unavailable
   /api/v1/social:
@@ -83,7 +119,7 @@ paths:
         "400":
           description: Missing symbol
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "404":
           description: Invalid symbol format
         "502":
@@ -117,7 +153,7 @@ paths:
         "400":
           description: Unsupported history range
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "404":
           description: Symbol format is invalid
         "502":
@@ -135,7 +171,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarketSnapshotResponse"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "502":
           description: Authentication or market-data provider unavailable
   /api/v1/trading/portfolio:
@@ -151,7 +187,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Portfolio"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "502":
           description: Alpaca paper-trading service unavailable
   /api/v1/trading/assets:
@@ -172,7 +208,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/TradingAssetsResponse"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "502":
           description: Alpaca paper-trading service unavailable
   /api/v1/trading/orders:
@@ -188,7 +224,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/OrderMonitor"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "502":
           description: Alpaca paper-trading service unavailable
     post:
@@ -209,7 +245,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "422":
           description: Invalid order input
         "502":
@@ -229,7 +265,7 @@ paths:
         "204":
           description: Cancellation request accepted
         "401":
-          description: Missing, expired, or invalid Google-backed application session
+          description: Missing, expired, or invalid application session
         "422":
           description: Invalid or no-longer-cancelable order
         "502":
@@ -246,8 +282,8 @@ components:
       required: [user]
       properties:
         user:
-          $ref: "#/components/schemas/GoogleUser"
-    GoogleUser:
+          $ref: "#/components/schemas/User"
+    User:
       type: object
       required: [id, email]
       properties:
@@ -255,6 +291,20 @@ components:
         email: { type: string, format: email }
         display_name: { type: string }
         avatar_url: { type: string, format: uri }
+    SignupRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 32 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12, maxLength: 72 }
+        display_name: { type: string }
+    LoginRequest:
+      type: object
+      required: [identity, password]
+      properties:
+        identity: { type: string }
+        password: { type: string }
     Portfolio:
       type: object
       required: [account, positions, as_of, source, mode]

@@ -28,7 +28,7 @@ cd ..
 pnpm dev
 ```
 
-Apply `backend/migrations/001_trading_ledger.sql`, then configure the database service credentials, Google OAuth web client, provider credentials, and trained checkpoint path in `.env`. The registered Google redirect URI must exactly match `GOOGLE_OAUTH_REDIRECT_URI`; locally it is `http://localhost:8080/auth/google/callback`. Start the Python model service before the Go API. Credentials remain server-only, while the browser receives only a signed HTTP-only application session cookie. See [runtime configuration](docs/configuration.md) for every variable and where to obtain it.
+Apply the SQL files in `backend/migrations` in numeric order, then configure the database, application signing key, provider credentials, and trained checkpoint path in `.env`. Email/username authentication works independently of Google. To enable Google, set `GOOGLE_OAUTH_ENABLED=true`; the registered redirect URI must exactly match `GOOGLE_OAUTH_REDIRECT_URI`, locally `http://localhost:8080/auth/google/callback`. Credentials remain server-only, while the browser receives only a signed HTTP-only session cookie. See [runtime configuration](docs/configuration.md) for every variable and where to obtain it.
 
 ## Quality checks
 
@@ -42,7 +42,7 @@ This runs linting, TypeScript validation, unit tests, and a production build.
 
 - React 19 and TanStack Start
 - TypeScript and Tailwind CSS
-- Google OpenID Connect authentication with signed HTTP-only sessions
+- Email/username authentication and optional Google OpenID Connect with signed HTTP-only sessions
 - Go backend with Google OAuth, Neon PostgreSQL persistence, Alpaca market/trading/news APIs, GDELT news, and Bluesky public post search
 - Python FinBERT inference service backed by the trained Trading Wens sentiment checkpoint
 
