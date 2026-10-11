@@ -3,7 +3,7 @@
 **Candidate Name:** Shivansh Dwivedi<br>
 **College Email ID:** bt23cse124@iiitn.ac.in<br>
 **College / Campus:** IIIT Nagpur<br>
-**Demo Video Link:** Pending unlisted YouTube upload<br>
+**Demo Video Link:** (https://youtu.be/jO-s2pOEmOg)<br>
 **Slide Deck Link:** [PDF](docs/presentation.pdf) · [PowerPoint](docs/presentation.pptx)
 
 Trading Wens is a decision-support workspace for paper trading. It brings live market snapshots, account positions, company news, trained financial sentiment, directional signals, and position-aware risk into one authenticated interface. The aim is not to automate investment decisions. It is to reduce the time between a market event and a reasoned, auditable response.
