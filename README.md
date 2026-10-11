@@ -1,7 +1,7 @@
 # Trading Wens - S&P Global & Crisil Campus Hackathon
 
 **Candidate Name:** Shivansh Dwivedi<br>
-**College Email ID:** Pending candidate confirmation<br>
+**College Email ID:** bt23cse124@iiitn.ac.in<br>
 **College / Campus:** IIIT Nagpur<br>
 **Demo Video Link:** Pending unlisted YouTube upload<br>
 **Slide Deck Link:** [PDF](docs/presentation.pdf) · [PowerPoint](docs/presentation.pptx)
@@ -152,7 +152,7 @@ The final recording should be no longer than ten minutes and should show: sign-i
 
 ## Submission Access Checklist
 
-- [ ] Add the confirmed IIIT Nagpur college email address.
+- [x] Add the confirmed IIIT Nagpur college email address.
 - [ ] Add the unlisted YouTube demo URL.
 - [ ] Rename the public repository to `iiit-nagpur-shivansh-dwivedi-hackathon`.
 - [ ] Confirm the repository opens in a private/incognito window without authentication.
