@@ -1,14 +1,14 @@
 # Trading Wens - S&P Global & Crisil Campus Hackathon
 
-**Candidate:** Shivansh Dwivedi<br>
-**College email:** Pending candidate confirmation<br>
-**College / campus:** Pending candidate confirmation<br>
-**Demo video:** Pending unlisted YouTube upload<br>
-**Presentation:** [PowerPoint](docs/presentation.pptx) · [PDF](docs/presentation.pdf)
+**Candidate Name:** Shivansh Dwivedi<br>
+**College Email ID:** Pending candidate confirmation<br>
+**College / Campus:** IIIT Nagpur<br>
+**Demo Video Link:** Pending unlisted YouTube upload<br>
+**Slide Deck Link:** [PDF](docs/presentation.pdf) · [PowerPoint](docs/presentation.pptx)
 
 Trading Wens is a decision-support workspace for paper trading. It brings live market snapshots, account positions, company news, trained financial sentiment, directional signals, and position-aware risk into one authenticated interface. The aim is not to automate investment decisions. It is to reduce the time between a market event and a reasoned, auditable response.
 
-## 1. Project Overview
+## 1. Project Overview / Problem Statement & Approach
 
 Market data, news, portfolio exposure, and execution records usually live in separate tools. That fragmentation makes it hard to answer a practical question quickly: *what changed, what might it mean for my current position, and what should I inspect before placing a trade?* A raw positive headline is also not enough. The same predicted move can reduce risk for one position and increase risk for another.
 
@@ -18,7 +18,7 @@ The result is one workspace for account overview, order entry, live risk review,
 
 ![Authenticated account overview showing positions and order activity](docs/images/account-overview.png)
 
-## 2. Architecture and Data Flow
+## 2. Architecture & Tech Stack
 
 ![Trading Wens architecture](docs/architecture.png)
 
@@ -34,7 +34,7 @@ The result is one workspace for account overview, order entry, live risk review,
 
 Detailed design decisions and contracts are documented in [docs/architecture.md](docs/architecture.md), [docs/api-v1.yaml](docs/api-v1.yaml), and [docs/system-design.md](docs/system-design.md).
 
-## 3. Dataset Description
+## 3. Dataset Used
 
 Runtime data comes from authorized or public sources:
 
@@ -52,7 +52,9 @@ No proprietary dataset or secret is committed. Live provider payloads remain at 
 
 The sentiment checkpoint is a separately trained financial-language model. Model weights are not committed because they are generated deployment artifacts and exceed normal Git hosting limits. The inference contract requires `model.safetensors`, tokenizer files, `labels.json`, and `calibration.json` in the configured checkpoint directory.
 
-## 4. How to Run
+## 4. Quickstart & Installation
+
+**Runtime tested:** Node.js 20+, Go 1.23, and Python 3.11+ on Windows 11.
 
 ### Prerequisites
 
@@ -150,9 +152,9 @@ The final recording should be no longer than ten minutes and should show: sign-i
 
 ## Submission Access Checklist
 
-- [ ] Add the confirmed college email and college/campus name.
+- [ ] Add the confirmed IIIT Nagpur college email address.
 - [ ] Add the unlisted YouTube demo URL.
-- [ ] Rename the public repository to `<college>-shivansh-dwivedi-hackathon` once the college identifier is confirmed.
+- [ ] Rename the public repository to `iiit-nagpur-shivansh-dwivedi-hackathon`.
 - [ ] Confirm the repository opens in a private/incognito window without authentication.
 - [ ] Confirm the YouTube video is viewable without requesting access.
 - [ ] Confirm `docs/presentation.pdf` and `docs/presentation.pptx` open from this README.
