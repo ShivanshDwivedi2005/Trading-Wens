@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  frontend:
+  src/frontend:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.2.2

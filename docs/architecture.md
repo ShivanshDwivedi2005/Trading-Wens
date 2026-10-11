@@ -146,7 +146,7 @@ Slow WebSocket clients have bounded outbound queues. The server coalesces replac
 
 ## Workspace boundaries
 
-The target repository layout is described in [repository-layout.md](repository-layout.md). The important boundary is that `frontend/` and `backend/` remain independently buildable. Frontend TypeScript types and backend Go types must be generated from or checked against a documented versioned API contract rather than copied manually.
+The repository layout is described in [repository-layout.md](repository-layout.md). The important boundary is that `src/frontend/` and `src/backend/` remain independently buildable. Frontend TypeScript types and backend Go types must be generated from or checked against a documented versioned API contract rather than copied manually.
 
 ## Operational guarantees
 

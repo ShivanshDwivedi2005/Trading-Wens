@@ -1,5 +1,5 @@
 packages:
-  - frontend
+  - src/frontend
 
 allowBuilds:
   '@tailwindcss/oxide': true

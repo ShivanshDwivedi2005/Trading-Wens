@@ -29,11 +29,15 @@ playwright-report
 test-results
 
 # Local model artifacts and Python caches
-ml/models/
+src/ml/.venv/
+src/ml/models/
 *.onnx
 *.safetensors
 __pycache__/
 *.pyc
+
+# Private local packaging workspace
+.codex-build/
 
 # Wrangler / Cloudflare
 .wrangler/

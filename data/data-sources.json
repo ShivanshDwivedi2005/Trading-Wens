@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Alpaca",
+    "documentation": "https://docs.alpaca.markets/",
+    "access": "Authenticated provider API",
+    "used_for": ["market snapshots", "bars", "paper account", "positions", "orders", "fills", "available news"],
+    "stored_in_submission": false
+  },
+  {
+    "name": "GDELT DOC 2.0",
+    "documentation": "https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/",
+    "access": "Public API",
+    "used_for": ["company coverage", "headlines", "publisher names", "source URLs"],
+    "stored_in_submission": false
+  },
+  {
+    "name": "Bluesky Public AppView",
+    "documentation": "https://docs.bsky.app/docs/category/http-reference",
+    "access": "Public API",
+    "used_for": ["recent public stock conversation"],
+    "stored_in_submission": false
+  },
+  {
+    "name": "Trading Wens synthetic demonstration fixtures",
+    "documentation": "../src/frontend/src/lib/market.ts",
+    "access": "Repository fixture",
+    "used_for": ["public demonstration", "presentation examples"],
+    "stored_in_submission": true
+  }
+]

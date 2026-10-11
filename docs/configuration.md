@@ -10,7 +10,7 @@ Copy `.env.example` to `.env` and fill only the values for services you run. Kee
 - `DATABASE_CONNECT_TIMEOUT_SECONDS`: maximum startup connection time. The default is 15 seconds.
 - `DATABASE_MIN_CONNECTIONS` and `DATABASE_MAX_CONNECTIONS`: backend pool limits. Defaults are 1 and 10.
 
-Before starting the API, run `backend/migrations/001_trading_ledger.sql` and then `backend/migrations/002_password_auth.sql` in the Neon SQL Editor. The backend performs a startup check and refuses to serve authenticated trading data when the database credentials are unavailable.
+Before starting the API, run `src/backend/migrations/001_trading_ledger.sql` and then `src/backend/migrations/002_password_auth.sql` in the PostgreSQL SQL editor. The backend performs a startup check and refuses to serve authenticated trading data when the database credentials are unavailable.
 
 The migrations create application profiles and bcrypt password credentials without modifying an external authentication schema. All order, fill, audit, account, and position rows are scoped by application user ID and provider account ID. A provider account can be owned by only one application user. Current positions are upserted, position/account history is sampled once per minute, fills are idempotent, and audit events are append-only.
 
@@ -43,10 +43,10 @@ Install the pinned Python packages and start the model before the Go API:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r ml\requirements.txt
+python -m pip install -r src\ml\requirements.txt
 $env:NLP_MODEL_DIR = 'C:\path\to\Trading-Wens-NLP-Training\trading_wens_ml\models\sentiment\best'
 $env:NLP_MODEL_VERSION = 'sentiment-2026-10-08'
-python ml\inference\server.py
+python src\ml\inference\server.py
 ```
 
 The model weights are not committed because they are generated deployment artifacts and exceed normal Git hosting limits.

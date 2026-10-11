@@ -1,0 +1,8 @@
+[
+  {"id":"risk-001","ticker":"NVDA","company":"NVIDIA","event_type":"Earnings guidance","sentiment":-0.78,"impact":9.2,"confidence":94,"severity":"Critical","direction":"Downside","synthetic":true},
+  {"id":"risk-002","ticker":"AAPL","company":"Apple","event_type":"Product demand","sentiment":0.64,"impact":6.4,"confidence":88,"severity":"Moderate","direction":"Upside","synthetic":true},
+  {"id":"risk-003","ticker":"TSLA","company":"Tesla","event_type":"Regulatory scrutiny","sentiment":-0.42,"impact":7.1,"confidence":82,"severity":"High","direction":"Downside","synthetic":true},
+  {"id":"risk-004","ticker":"MSFT","company":"Microsoft","event_type":"Cloud growth","sentiment":0.82,"impact":8.3,"confidence":96,"severity":"Low","direction":"Upside","synthetic":true},
+  {"id":"risk-005","ticker":"JPM","company":"JPMorgan Chase","event_type":"Credit outlook","sentiment":-0.56,"impact":7.8,"confidence":91,"severity":"High","direction":"Downside","synthetic":true},
+  {"id":"risk-006","ticker":"AMZN","company":"Amazon","event_type":"Margin expansion","sentiment":0.47,"impact":5.9,"confidence":85,"severity":"Low","direction":"Upside","synthetic":true}
+]
