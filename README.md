@@ -138,33 +138,3 @@ Trading-Wens/
     ├── images/
     └── design and API documentation
 ```
-
-## Demo Video Plan
-
-The final recording should be no longer than ten minutes and should show: sign-in, account overview, a paper market order, the refreshed position, trained news sentiment, movement prediction, individual and overall portfolio risk, and the order audit trail. Upload it as an unlisted YouTube video and replace the pending entry at the top of this README.
-
-## Limitations and Next Steps
-
-- Directional prediction is decision support, not a guarantee or investment recommendation.
-- Accuracy depends on provider availability, symbol relevance, checkpoint calibration, and the latency of source publication.
-- Portfolio risk is currently an interpretable exposure heuristic rather than a full VaR or stress-testing engine.
-- Next steps are walk-forward evaluation, event clustering, calibrated neutral thresholds, WebSocket updates, and production monitoring for model drift and provider health.
-
-## Submission Access Checklist
-
-- [x] Add the confirmed IIIT Nagpur college email address.
-- [ ] Add the unlisted YouTube demo URL.
-- [ ] Rename the public repository to `iiit-nagpur-shivansh-dwivedi-hackathon`.
-- [ ] Confirm the repository opens in a private/incognito window without authentication.
-- [ ] Confirm the YouTube video is viewable without requesting access.
-- [ ] Confirm `docs/presentation.pdf` and `docs/presentation.pptx` open from this README.
-- [ ] Run `pnpm check` and `go test ./...` from a clean clone.
-- [ ] Verify no `.env`, credential, model-weight, dependency, or generated-build files are staged.
-
-## Academic Integrity
-
-This repository contains original implementation work for a single-candidate hackathon submission. External APIs, libraries, model families, and design media are named in the repository and presentation. No confidential S&P Global or Crisil information is included. The application is a research and simulation aid, not investment advice.
-
-## License
-
-Released under the [MIT License](LICENSE).
